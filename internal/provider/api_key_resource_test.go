@@ -221,14 +221,20 @@ func TestAccAPIKeyResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := fmt.Sprintf("terraform-key-acc-%d", time.Now().UnixNano())
-	config := fmt.Sprintf(`
+	config := func(rotation string) string {
+		return fmt.Sprintf(`
 provider "opper" {}
 resource "opper_project" "test" { name = %q }
 resource "opper_api_key" "test" {
  project_id = opper_project.test.id
  name = "acceptance-service"
+ rotation = %q
+ lifecycle { create_before_destroy = true }
 }
-`, name)
+`, name, rotation)
+	}
+	var originalID string
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true,
 		CheckDestroy: func(s *terraform.State) error {
@@ -254,8 +260,9 @@ resource "opper_api_key" "test" {
 			return nil
 		},
 		Steps: []resource.TestStep{
-			{Config: config, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("opper_api_key.test", "kind", "project"), resource.TestCheckResourceAttr("opper_api_key.test", "secret_available", "true"), func(s *terraform.State) error {
+			{Config: config("first"), Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("opper_api_key.test", "kind", "project"), resource.TestCheckResourceAttr("opper_api_key.test", "secret_available", "true"), func(s *terraform.State) error {
 				rs := s.RootModule().Resources["opper_api_key.test"]
+				originalID = rs.Primary.ID
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				keys, err := api.ListAPIKeys(ctx, rs.Primary.Attributes["project_id"])
@@ -269,8 +276,38 @@ resource "opper_api_key" "test" {
 				}
 				return fmt.Errorf("project-owned key missing from API")
 			})},
-			{Config: config, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: config("first"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 			{ResourceName: "opper_api_key.test", ImportState: true, ImportStateIdFunc: apiKeyImportID, ImportStateCheck: checkImportedAPIKeyMetadata, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"secret", "secret_available", "idempotency_key", "rotation"}},
+			{Config: config("rotated"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("opper_api_key.test", plancheck.ResourceActionCreateBeforeDestroy)}}, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("opper_api_key.test", "kind", "project"), resource.TestCheckResourceAttr("opper_api_key.test", "secret_available", "true"), func(s *terraform.State) error {
+				rs := s.RootModule().Resources["opper_api_key.test"]
+				if rs.Primary.ID == originalID {
+					return fmt.Errorf("rotation retained the original key identity")
+				}
+				if rs.Primary.Attributes["project_id"] != s.RootModule().Resources["opper_project.test"].Primary.ID {
+					return fmt.Errorf("rotated key changed project")
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				keys, err := api.ListAPIKeys(ctx, rs.Primary.Attributes["project_id"])
+				if err != nil {
+					return err
+				}
+				foundNew := false
+				for _, key := range keys {
+					id := strconv.FormatInt(key.ID, 10)
+					if id == originalID {
+						return fmt.Errorf("rotation did not revoke the old key")
+					}
+					if id == rs.Primary.ID && key.Kind == "project" {
+						foundNew = true
+					}
+				}
+				if !foundNew {
+					return fmt.Errorf("rotated project-owned key missing from API")
+				}
+				return nil
+			})},
+			{Config: config("rotated"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 		},
 	})
 }

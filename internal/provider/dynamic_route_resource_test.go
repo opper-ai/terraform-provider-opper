@@ -357,12 +357,73 @@ func TestAccDynamicRouteResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := fmt.Sprintf("terraform-acc-draft-%d", time.Now().UnixNano())
-	config := fmt.Sprintf(`provider "opper" {}
+	const address = "opper_dynamic_route.test"
+	// Reordering START/END changes the stored graph without introducing a
+	// model call or an answering path. This remains a draft throughout.
+	const normalizedInitialGraph = `{"elements":[{"id":"START","type":"start","outputs":{"next":{"elementId":"END"}}},{"id":"END","type":"end","outputs":{}}]}`
+	const reorderedGraph = `{"elements":[{"id":"END","type":"end","outputs":{}},{"id":"START","type":"start","outputs":{"next":{"elementId":"END"}}}]}`
+	config := func(graph, description, displayName string) string {
+		return fmt.Sprintf(`provider "opper" {}
 resource "opper_dynamic_route" "test" {
   name = %q
   graph_json = %q
+  description = %q
+  display_name = %q
 }
-`, name, dynamicRouteDraftGraph)
+`, name, graph, description, displayName)
+	}
+	var originalUUID string
+	var initialRevision int64
+	checkDraft := func(delta int64, desired, effective, description, displayName string) resource.TestCheckFunc {
+		return resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "id", name),
+			resource.TestCheckResourceAttr(address, "description", description),
+			resource.TestCheckResourceAttr(address, "display_name", displayName),
+			resource.TestCheckNoResourceAttr(address, "active_version_number"),
+			resource.TestCheckResourceAttrWith(address, "uuid", func(value string) error {
+				if value == "" {
+					return fmt.Errorf("live route UUID is missing")
+				}
+				if originalUUID == "" {
+					originalUUID = value
+				} else if value != originalUUID {
+					return fmt.Errorf("live draft update replaced route UUID")
+				}
+				return nil
+			}),
+			resource.TestCheckResourceAttrWith(address, "draft_revision", func(value string) error {
+				var revision int64
+				if _, err := fmt.Sscan(value, &revision); err != nil || revision < 1 {
+					return fmt.Errorf("invalid live draft revision %q", value)
+				}
+				if initialRevision == 0 {
+					initialRevision = revision
+				}
+				if revision != initialRevision+delta {
+					return fmt.Errorf("expected draft revision %d, got %d: only PUT draft may increment it", initialRevision+delta, revision)
+				}
+				return nil
+			}),
+			resource.TestCheckResourceAttrWith(address, "graph_json", func(value string) error {
+				if !dynamicRouteJSONEqual(value, desired) {
+					return fmt.Errorf("desired graph changed during live reconciliation")
+				}
+				return nil
+			}),
+			resource.TestCheckResourceAttrWith(address, "effective_graph_json", func(value string) error {
+				if !dynamicRouteJSONEqual(value, effective) {
+					return fmt.Errorf("effective graph does not match the normalized live draft")
+				}
+				return nil
+			}),
+		)
+	}
+	initial := config(dynamicRouteDraftGraph, "", "")
+	described := config(dynamicRouteDraftGraph, "Live draft description", "")
+	labelled := config(dynamicRouteDraftGraph, "Live draft description", "Live acceptance draft")
+	reordered := config(reorderedGraph, "Live draft description", "Live acceptance draft")
+	clearedDescription := config(reorderedGraph, "", "Live acceptance draft")
+	clearedLabel := config(reorderedGraph, "", "")
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true,
 		CheckDestroy: func(_ *terraform.State) error {
@@ -375,9 +436,22 @@ resource "opper_dynamic_route" "test" {
 			return nil
 		},
 		Steps: []resource.TestStep{
-			{Config: config, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("opper_dynamic_route.test", "id", name), resource.TestCheckNoResourceAttr("opper_dynamic_route.test", "active_version_number"))},
-			{Config: config, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
-			{ResourceName: "opper_dynamic_route.test", ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"graph_json"}},
+			{Config: initial, Check: checkDraft(0, dynamicRouteDraftGraph, normalizedInitialGraph, "", "")},
+			{Config: initial, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: checkDraft(0, dynamicRouteDraftGraph, normalizedInitialGraph, "", "")},
+			// Description-only PUT changes revision; metadata-only PATCH must not.
+			{Config: described, Check: checkDraft(1, dynamicRouteDraftGraph, normalizedInitialGraph, "Live draft description", "")},
+			{Config: labelled, Check: checkDraft(1, dynamicRouteDraftGraph, normalizedInitialGraph, "Live draft description", "Live acceptance draft")},
+			{Config: reordered, Check: checkDraft(2, reorderedGraph, reorderedGraph, "Live draft description", "Live acceptance draft")},
+			{Config: clearedDescription, Check: checkDraft(3, reorderedGraph, reorderedGraph, "", "Live acceptance draft")},
+			{Config: clearedLabel, Check: checkDraft(3, reorderedGraph, reorderedGraph, "", "")},
+			{Config: clearedLabel, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: checkDraft(3, reorderedGraph, reorderedGraph, "", "")},
+			{ResourceName: address, ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"graph_json"},
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 || !dynamicRouteJSONEqual(states[0].Attributes["graph_json"], reorderedGraph) || !dynamicRouteJSONEqual(states[0].Attributes["effective_graph_json"], reorderedGraph) {
+						return fmt.Errorf("import did not preserve the normalized live graph meaning")
+					}
+					return nil
+				}},
 		},
 	})
 }

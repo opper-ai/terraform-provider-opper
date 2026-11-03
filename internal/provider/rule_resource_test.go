@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -209,7 +211,7 @@ func TestAccRuleResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := fmt.Sprintf("terraform-rule-acc-%d", time.Now().UnixNano())
-	config := func(enabled bool) string {
+	config := func(enabled bool, retentionDays int) string {
 		return fmt.Sprintf(`
 provider "opper" {}
 resource "opper_project" "test" {
@@ -223,16 +225,27 @@ resource "opper_rule" "test" {
  type = "projects"
  project_uuids = [opper_project.test.id]
  }
- config_json = jsonencode({type="retention",retention_days=7})
+ config_json = jsonencode({type="retention",retention_days=%d})
 }
-`, name+"-project", name, enabled)
+`, name+"-project", name, enabled, retentionDays)
 	}
 	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), Steps: []resource.TestStep{
-		{Config: config(false), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "false")},
-		{Config: config(false), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
-		{Config: config(true), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "true")},
-		{Config: config(false), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "false")},
-		{ResourceName: "opper_rule.test", ImportState: true, ImportStateVerify: true},
+		{Config: config(false, 7), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "false")},
+		{Config: config(false, 7), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+		{Config: config(true, 7), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "true")},
+		{Config: config(false, 7), Check: resource.TestCheckResourceAttr("opper_rule.test", "enabled", "false")},
+		{Config: config(false, 3), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("opper_rule.test", plancheck.ResourceActionUpdate)}}, Check: func(s *terraform.State) error {
+			id := s.RootModule().Resources["opper_rule.test"].Primary.ID
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			rule, err := api.GetRule(ctx, id)
+			if err != nil {
+				return err
+			}
+			return compareRuleJSONForTest(string(rule.Config), `{"type":"retention","retention_days":3}`)
+		}},
+		{Config: config(false, 3), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+		{ResourceName: "opper_rule.test", ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"config_json"}, ImportStateCheck: checkImportedRuleConfig(`{"type":"retention","retention_days":3}`)},
 	}, CheckDestroy: func(s *terraform.State) error {
 		for _, rs := range s.RootModule().Resources {
 			if rs.Primary == nil || (rs.Type != "opper_rule" && rs.Type != "opper_project") {
@@ -409,4 +422,49 @@ func TestRuleResourceUnresolvedCreateKeepsIdentityForCleanup(t *testing.T) {
 		}
 		return nil
 	}})
+}
+
+// ImportStateVerify compares strings byte-for-byte. Rule configs are JSON
+// objects, whose field order and whitespace do not change the imported policy.
+func checkImportedRuleConfig(expected string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported rule")
+		}
+		return compareRuleJSONForTest(states[0].Attributes["config_json"], expected)
+	}
+}
+func compareRuleJSONForTest(actual, expected string) error {
+	var got, want map[string]any
+	if json.Unmarshal([]byte(actual), &got) != nil || got == nil {
+		return fmt.Errorf("imported or read rule config is not a JSON object")
+	}
+	if json.Unmarshal([]byte(expected), &want) != nil || want == nil {
+		return fmt.Errorf("expected rule config is not a JSON object")
+	}
+	if !reflect.DeepEqual(got, want) {
+		return fmt.Errorf("imported or read rule configuration differs from the desired policy")
+	}
+	return nil
+}
+func TestImportedRuleConfigSemanticComparison(t *testing.T) {
+	expected := `{"retention_days":3,"type":"retention"}`
+	for _, tc := range []struct {
+		name, actual string
+		valid        bool
+	}{
+		{"reordered", `{"type":"retention","retention_days":3}`, true},
+		{"formatted", "{\n  \"type\": \"retention\", \"retention_days\":3\n}", true},
+		{"policy differs", `{"type":"retention","retention_days":7}`, false},
+		{"extra policy field", `{"type":"retention","retention_days":3,"extra":true}`, false},
+		{"invalid", "not-json", false},
+		{"null", "null", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkImportedRuleConfig(expected)([]*terraform.InstanceState{{Attributes: map[string]string{"config_json": tc.actual}}})
+			if (err == nil) != tc.valid {
+				t.Fatalf("semantic import verification mismatch: %v", err)
+			}
+		})
+	}
 }
