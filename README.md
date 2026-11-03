@@ -87,7 +87,7 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
 
 The baseline tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
 
-The new conditional deployment test additionally requires `OPPER_TEST_MODEL_ID` set to an exact current, permitted catalog model and the backend deployment API rolled out first. It creates, updates, disables, re-enables and deletes only a task-owned route without running inference. Production acceptance of this new surface is pending; the baseline acceptance record does not cover it.
+The new conditional deployment test additionally requires `OPPER_TEST_MODEL_ID` set to an exact current, permitted catalog model and the backend deployment API rolled out first. It creates, updates, disables, re-enables and deletes only a task-owned route without running inference. Live acceptance of this surface passed on 2026-11-03 after the backend rollout, including exact-version import and inventory restoration; see the acceptance record.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 
