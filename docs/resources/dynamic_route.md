@@ -5,7 +5,7 @@ description: "Manage an Opper dynamic route draft and its metadata."
 
 # opper_dynamic_route (Resource)
 
-Manages a dynamic route's **draft and metadata**. It never deploys a graph. Creating this resource produces a draft-only route; an existing active version remains active while Terraform edits its draft.
+Manages a dynamic route's **draft and metadata**. It never deploys a graph. Creating this resource produces a draft-only route; an existing active version remains active while Terraform edits its draft. Use the separate [deployment resource](dynamic_route_deployment.md) to opt into live routing after the conditional backend API is deployed.
 
 ```hcl
 resource "opper_dynamic_route" "support" {
@@ -54,7 +54,7 @@ Requires `dynamic_routes:read` and `dynamic_routes:write`. Editor canvas layout 
 
 An unchanged apply makes no draft, metadata or deployment writes. A formatting-only graph change can produce a one-time Terraform state update, with no API mutation; subsequent plans are empty. Graph/description changes save a new draft revision; a display-name-only change uses the metadata endpoint. Neither operation changes the active graph.
 
-`graph_json` preserves the configured graph while `effective_graph_json` records the normalized API result. If the remote draft still matches that result, refresh preserves the desired configuration. A draft edited outside Terraform is exposed as drift and the next apply restores the configured draft. An outside deployment updates `active_version_number`; Terraform does not deploy a replacement version or roll it back.
+`graph_json` preserves the configured graph while `effective_graph_json` records the normalized API result. If the remote draft still matches that result, refresh preserves the desired configuration. A draft edited outside Terraform is exposed as drift and the next apply restores the configured draft. An outside deployment updates `active_version_number`; The draft resource does not deploy a replacement version or roll it back.
 
 The API has no conditional draft-write precondition. Avoid editing the same draft concurrently in the platform and Terraform: apply can overwrite a draft edit made after its refresh. Layout is preserved, but graph ownership should have one writer.
 
@@ -78,8 +78,8 @@ Creation has no idempotency-key contract. If the create response is lost or fail
 
 Destroy deletes the entire route, including access to its active version. Model calls to `dynamic/<name>` then stop working. This applies even when the active version was deployed outside Terraform. Use Terraform's `prevent_destroy` for routes serving production traffic. API errors leave the managed route in state.
 
-## Deployment prerequisite
+## Separate live deployment
 
-Deployment is intentionally unsupported by this resource. The current API's deploy request accepts a release note and publishes whichever draft is current when its transaction executes. It does not accept an expected draft revision, graph hash or idempotency key, and every successful deploy creates a new version. A concurrent draft edit can therefore deploy content other than the graph Terraform just saved, and retrying an uncertain response can create an extra version.
+This draft resource never deploys or undeploys. The optional [`opper_dynamic_route_deployment` resource](dynamic_route_deployment.md) publishes the exact saved draft revision and owns the resulting immutable version. It requires the conditional backend API, which must be fully rolled out first. It does not use the legacy endpoint that can accept a deployment without concurrency preconditions.
 
-Reliable declarative deployment needs a backend contract that conditionally publishes the intended revision/content and safely replays an uncertain deploy. There is also no undeploy endpoint, so a `deploy = false` setting could not reliably promise an inactive route. Deploy outside Terraform until those API capabilities exist; this provider exposes the active version without claiming to manage it.
+Use separate resources so saving a draft is distinct from changing live routing. Without a deployment resource, deploy through the platform or Management API as before.

@@ -87,7 +87,7 @@ func (p *OpperProvider) Configure(ctx context.Context, req provider.ConfigureReq
 }
 
 func (p *OpperProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewProjectResource, NewAPIKeyResource, NewRuleResource, NewDynamicRouteResource}
+	return []func() resource.Resource{NewProjectResource, NewAPIKeyResource, NewRuleResource, NewDynamicRouteResource, NewDynamicRouteDeploymentResource}
 }
 
 func (p *OpperProvider) DataSources(context.Context) []func() datasource.DataSource {

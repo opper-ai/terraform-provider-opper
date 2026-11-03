@@ -5,7 +5,7 @@ description: "Manage Opper configuration through the Management API."
 
 # Opper provider
 
-The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects, project-owned runtime keys, rules and dynamic-route drafts. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper); Terraform Registry releases are not yet published.
+The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper); Terraform Registry releases are not yet published.
 
 ```hcl
 terraform {
@@ -27,7 +27,7 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Project lookup | `projects:read` |
 | Runtime key resource | `apikeys:read`, `apikeys:write` |
 | Rule resource | `controls:read`, `controls:write` |
-| Dynamic-route draft resource | `dynamic_routes:read`, `dynamic_routes:write` |
+| Dynamic-route draft and deployment resources | `dynamic_routes:read`, `dynamic_routes:write` |
 
 ## Schema
 
@@ -38,4 +38,4 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 
 For multiple organizations, use provider aliases with separate management credentials. `base_url` changes the API origin, not the selected organization.
 
-See the [project resource](resources/project.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [project data source](data-sources/project.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).
+See the [project resource](resources/project.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [live deployments](resources/dynamic_route_deployment.md), [project data source](data-sources/project.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).

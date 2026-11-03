@@ -9,7 +9,8 @@ import (
 )
 
 // DynamicRouteDetail is the management API's route/draft envelope. The active
-// version is deliberately observational: this provider manages drafts only.
+// version summary is observational; the separate deployment resource reads
+// the exact immutable version before asserting ownership.
 type DynamicRouteDetail struct {
 	Route struct {
 		UUID            string `json:"uuid"`
@@ -24,7 +25,8 @@ type DynamicRouteDetail struct {
 		Revision int64           `json:"revision"`
 	} `json:"draft"`
 	ActiveVersion *struct {
-		VersionNumber int64 `json:"version_number"`
+		UUID          string `json:"uuid"`
+		VersionNumber int64  `json:"version_number"`
 	} `json:"active_version,omitempty"`
 }
 
