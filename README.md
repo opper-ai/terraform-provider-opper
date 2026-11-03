@@ -1,9 +1,9 @@
 # Terraform provider for Opper
 
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
-This provider manages projects, project-owned runtime keys, rules and dynamic-route drafts. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
+This provider manages projects, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
-The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Route deployment and member management are not implemented yet.
+The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Member management remains outside the current provider scope.
 
 | Resource | Manages |
 |---|---|
@@ -11,6 +11,7 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
 | [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
 | [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
+| [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
 
@@ -84,7 +85,9 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
   go test ./internal/provider -run '^TestAcc' -v
 ```
 
-These tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
+The baseline tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
+
+The new conditional deployment test additionally requires `OPPER_TEST_MODEL_ID` set to an exact current, permitted catalog model and the backend deployment API rolled out first. It creates, updates, disables, re-enables and deletes only a task-owned route without running inference. Production acceptance of this new surface is pending; the baseline acceptance record does not cover it.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 
@@ -101,4 +104,4 @@ Do not commit credentials, Terraform state or plan files. Supply the management 
 
 Runtime-key secrets are returned once and retained in Terraform state with the sensitive flag. Import recovers key metadata only. Protect the state backend and review the [key lifecycle](docs/resources/api_key.md) before rotation.
 
-The route resource manages drafts only. Current deployment endpoints lack revision preconditions and idempotent deployment receipts; Terraform cannot guarantee it would deploy the graph it planned in the presence of concurrent edits. Deployment remains a documented API prerequisite rather than an implicit apply side effect.
+The draft route resource never deploys. Opt into live routing with the separate [deployment resource](docs/resources/dynamic_route_deployment.md), after the conditional-deployment backend rollout. It uses only the new `/deployments` endpoint, verifies exact immutable ownership and refuses to undeploy another writer's version. Destroying the deployment retains the draft and version history.

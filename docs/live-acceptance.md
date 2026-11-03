@@ -21,6 +21,6 @@ The first rule import check failed because the API serialized the same JSON obje
 
 These results validate the listed workflows, not every rule configuration, account plan or failure scenario. Local tests separately cover failures, drift, normalization, concurrent edits and one-time-secret recovery. Rule writes still require the appropriate plan and all tests require the documented management scopes.
 
-The complete example validates against the provider binary; it has not been applied as a single combined live configuration. Live deployment of dynamic routes remains unsupported pending conditional, idempotent backend deployment. Membership management and the other API gaps remain in the [coverage plan](coverage.md).
+The complete example validates against the provider binary; it has not been applied as a single combined live configuration. The new conditional deployment resource has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification. Its production acceptance is pending the conditional backend API rollout; the four live suites above do not cover activation or undeployment. Membership management and the other API gaps remain in the [coverage plan](coverage.md).
 
 The tested baseline and this validation record are published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Terraform Registry releases have not been published.

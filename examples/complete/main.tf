@@ -25,6 +25,12 @@ variable "enable_budget" {
   default     = false
 }
 
+variable "deploy_route" {
+  type        = bool
+  description = "Opt into live routing only after the conditional-deployment backend rollout."
+  default     = false
+}
+
 resource "opper_project" "app" {
   name        = "terraform-example-service"
   description = "Example service managed with Terraform"
@@ -57,7 +63,7 @@ resource "opper_rule" "app_budget" {
 resource "opper_dynamic_route" "app" {
   name         = "terraform-example-router"
   display_name = "Example service router"
-  description  = "Draft route; Terraform does not deploy it"
+  description  = "Saved draft; activation is managed by the optional deployment resource"
 
   graph_json = jsonencode({
     elements = [
@@ -99,5 +105,15 @@ output "runtime_api_key" {
 
 output "route_invocation_model" {
   value       = opper_dynamic_route.app.invocation_model
-  description = "Route invocation name. It serves calls only after deployment outside Terraform."
+  description = "Route invocation name. It serves calls only after a version is deployed, optionally through deploy_route."
+}
+
+# Default is draft-only. Turning this on publishes the graph for live calls.
+resource "opper_dynamic_route_deployment" "app" {
+  count = var.deploy_route ? 1 : 0
+
+  route_name     = opper_dynamic_route.app.name
+  route_uuid     = opper_dynamic_route.app.uuid
+  draft_revision = opper_dynamic_route.app.draft_revision
+  note           = "Example service routing release"
 }

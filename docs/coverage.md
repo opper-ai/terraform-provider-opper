@@ -2,14 +2,14 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-The initial provider manages projects, project-owned runtime keys, rules and route drafts. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
+The initial provider manages projects, project-owned runtime keys, rules, route drafts and conditional live deployments. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
 | Projects | List, create, fetch, patch, delete | First slice: `opper_project` resource and data source, UUID import, drift and deletion detection. |
 | Runtime API keys | List, create, delete within a project | `opper_api_key`: project ownership, one-time secret retained in state, metadata-only import, explicit replacement and rotation. |
 | Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
-| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route`: metadata and drafts only. Live deployment needs backend preconditions and idempotency support. |
+| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route` manages metadata/drafts; `opper_dynamic_route_deployment` manages conditional live activation and undeployment after backend rollout. |
 | Members and invitations | List/remove members; list/create/revoke invitations | Later: member lookup first. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
@@ -35,7 +35,7 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 **Rules:** kind and scope are immutable and trigger replacement. Replacement can briefly alter policy enforcement. The provider generates rule UUIDs and compares desired config with an effective server snapshot to handle normalization without perpetual drift. Current Opper retention rules do not delete explicitly stored files; the old confirm_file_deletion flag is deprecated and is not exposed. Per-kind config semantics and supported schema versions remain server-validated.
 
-**Routes:** draft saves increment revisions and deploys create immutable versions. The implemented draft resource avoids unchanged saves, preserves UI layout, handles partial metadata/draft failure and observes active versions without changing them. Deployment currently snapshots the current draft without a caller-supplied revision/graph precondition and always creates another version. Add atomic expected-revision/graph validation and an idempotent deployment receipt before Terraform manages live deployment.
+**Routes:** draft saves increment revisions and deploys create immutable versions. The draft resource avoids unchanged saves and preserves UI layout. The separate deployment resource uses the new mandatory-precondition `/deployments` endpoint, matching route UUID, draft revision and observed active version. It resolves uncertain deploy responses with pure receipt lookup and undeploy responses with pure route reads, retains immutable ownership, and refuses to stop another writer. Failed initial Create recovery may require state removal and exact-version import to avoid Terraform taint replacement. The conditional backend API must be rolled out before use; legacy `/deploy` is never a provider fallback.
 
 **Invitations:** acceptance, expiration and resend are transitions with effects outside Terraform. Deleting an accepted invitation does not remove the member. Do not promise a managed membership lifecycle until the API can support that contract.
 
@@ -43,7 +43,7 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
-The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the current resource scope. Terraform Registry release preparation remains a separate step requiring agreement; live route deployment and the remaining API gaps are separate scope.
+The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the baseline four resources (projects, keys, rules and drafts). The conditional deployment increment has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification, including stale plans and lost responses. Its production acceptance remains pending backend rollout. Terraform Registry release preparation and remaining API gaps are separate scope.
 
 ## Owning references
 

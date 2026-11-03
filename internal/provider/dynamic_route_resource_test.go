@@ -248,7 +248,8 @@ func TestDynamicRouteResourceLifecycle(t *testing.T) {
 				defer api.mu.Unlock()
 				d := api.routes["terraform-draft"]
 				d.ActiveVersion = &struct {
-					VersionNumber int64 `json:"version_number"`
+					UUID          string `json:"uuid"`
+					VersionNumber int64  `json:"version_number"`
 				}{VersionNumber: 7}
 				api.routes["terraform-draft"] = d
 			}, Config: changed, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: resource.ComposeTestCheckFunc(checkWrites(1, 3, 2), resource.TestCheckResourceAttr(addr, "active_version_number", "7"))},
