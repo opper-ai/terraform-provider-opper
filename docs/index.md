@@ -5,7 +5,7 @@ description: "Manage Opper configuration through the Management API."
 
 # Opper provider
 
-The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The current implementation supports projects only and is not yet published to the Terraform Registry.
+The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The local implementation supports projects, project-owned runtime keys, rules and dynamic-route drafts. It is not yet published to GitHub or the Terraform Registry.
 
 ```hcl
 terraform {
@@ -19,7 +19,15 @@ terraform {
 provider "opper" {}
 ```
 
-Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines the organization; a runtime API key is not accepted. Project management requires `projects:read`, `projects:write` and `projects:delete`. The project data source requires `projects:read`.
+Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines the organization; a runtime API key is not accepted. Grant the scopes for the resources in your configuration:
+
+| Surface | Required scopes |
+|---|---|
+| Project resource | `projects:read`, `projects:write`, `projects:delete` |
+| Project lookup | `projects:read` |
+| Runtime key resource | `apikeys:read`, `apikeys:write` |
+| Rule resource | `controls:read`, `controls:write` |
+| Dynamic-route draft resource | `dynamic_routes:read`, `dynamic_routes:write` |
 
 ## Schema
 
@@ -30,4 +38,4 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 
 For multiple organizations, use provider aliases with separate management credentials. `base_url` changes the API origin, not the selected organization.
 
-See the [project resource](resources/project.md), [project data source](data-sources/project.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).
+See the [project resource](resources/project.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [project data source](data-sources/project.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).

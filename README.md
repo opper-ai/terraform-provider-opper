@@ -1,9 +1,18 @@
 # Terraform provider for Opper
 
-Manage Opper projects through the [Management API](https://docs.opper.ai/control-plane/management-api).
-This first implementation provides the `opper_project` resource and a project lookup data source. It is unreleased and has not been published to the Terraform Registry.
+Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
+This local implementation provides projects, project-owned runtime keys, rules and dynamic-route drafts. It is unreleased and has not been published to GitHub or the Terraform Registry.
 
-The [coverage plan](docs/coverage.md) tracks the remaining management surface. Keys, rules, routes and members are not implemented yet.
+The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Route deployment and member management are not implemented yet.
+
+| Resource | Manages |
+|---|---|
+| [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
+| [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
+| [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
+| [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
+
+The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
 
 ## Configure
 
@@ -66,16 +75,18 @@ Set `TF_CLI_CONFIG_FILE` to that configuration file. For a configuration contain
 go test ./...
 ```
 
-The local lifecycle tests use a real Terraform CLI with a local HTTP test server. They exercise provider behavior without an Opper credential or production changes. To use an installed Terraform executable explicitly, set `TF_ACC_TERRAFORM_PATH` to its absolute path.
+The local lifecycle tests use a real Terraform CLI with local HTTP test servers. They cover resources, import, drift, replacement, secret recovery and API refusals without an Opper credential or production changes. To use an installed Terraform executable explicitly, set `TF_ACC_TERRAFORM_PATH` to its absolute path.
 
 Live acceptance tests are opt-in. Provide `OPPER_MANAGEMENT_API_KEY` privately for a confirmed disposable test organization, then run:
 
 ```sh
 TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
-  go test ./internal/provider -run '^TestAccProjectResource$' -v
+  go test ./internal/provider -run '^TestAcc' -v
 ```
 
-This creates and deletes a uniquely named project in the credential's organization. Do not point it at an organization that holds user data. Live Opper acceptance has not yet been verified for this first slice.
+These tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live Opper acceptance has not yet been verified.
+
+Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI uses the same command once the repository is published. Until then, feature work remains in local commits.
 
 ## Lifecycle behavior
 
@@ -87,3 +98,7 @@ This creates and deletes a uniquely named project in the credential's organizati
 - Project creation has no idempotency-key contract. The provider does not blindly retry mutations or adopt projects by name. If a create request may have succeeded but Terraform could not save its response, inspect the project list and import the UUID before retrying.
 
 Do not commit credentials, Terraform state or plan files. Supply the management key through the environment rather than placing it in HCL.
+
+Runtime-key secrets are returned once and retained in Terraform state with the sensitive flag. Import recovers key metadata only. Protect the state backend and review the [key lifecycle](docs/resources/api_key.md) before rotation.
+
+The route resource manages drafts only. Current deployment endpoints lack revision preconditions and idempotent deployment receipts; Terraform cannot guarantee it would deploy the graph it planned in the presence of concurrent edits. Deployment remains a documented API prerequisite rather than an implicit apply side effect.

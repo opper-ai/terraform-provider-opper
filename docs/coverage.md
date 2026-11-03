@@ -2,14 +2,14 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-This initial slice implements a project resource and a UUID lookup data source. The remaining rows are a roadmap, not supported Terraform resources.
+The local implementation manages projects, project-owned runtime keys, rules and route drafts. Publication is deferred until the provider is ready to ship. Remaining gaps are listed explicitly below.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
 | Projects | List, create, fetch, patch, delete | First slice: `opper_project` resource and data source, UUID import, drift and deletion detection. |
-| Runtime API keys | List, create, delete within a project | Next: project-owned key resource; define one-time-secret, import and rotation behavior before implementation. |
-| Rules | List, create, patch, delete | Next: typed policy resources for spend limits, retention, model access, checks and routing. |
-| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | Next: desired routing graph and explicit deployment semantics; avoid versions on unchanged applies. |
+| Runtime API keys | List, create, delete within a project | `opper_api_key`: project ownership, one-time secret retained in state, metadata-only import, explicit replacement and rotation. |
+| Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
+| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route`: metadata and drafts only. Live deployment needs backend preconditions and idempotency support. |
 | Members and invitations | List/remove members; list/create/revoke invitations | Later: member lookup first. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
@@ -31,19 +31,19 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 ## Decisions before expanding
 
-**Keys:** the secret is returned once and is unavailable on refresh, import or idempotency replay. Choose and document state handling and recovery before exposing it. Marking an output sensitive does not exclude it from Terraform state. Explicitly create project-owned keys for infrastructure rather than relying on the API's personal-key default.
+**Keys:** the implemented resource retains the one-time secret in state, marks it sensitive and preserves it through refresh. Import is metadata-only. Known-ID missing-secret responses retain identity for recovery; unknown create outcomes need inspection/import before retrying. The resource explicitly requests project ownership. Optional idempotency tokens identify one create operation and must change for replacements.
 
-**Rules:** kind and scope are immutable. Replacement can briefly alter policy enforcement; design updates and dependency ordering accordingly. Rule IDs are client-chosen UUIDs, and retention changes can require explicit confirmation for stored-file deletion.
+**Rules:** kind and scope are immutable and trigger replacement. Replacement can briefly alter policy enforcement. The provider generates rule UUIDs and compares desired config with an effective server snapshot to handle normalization without perpetual drift. Current Opper retention rules do not delete explicitly stored files; the old confirm_file_deletion flag is deprecated and is not exposed. Per-kind config semantics and supported schema versions remain server-validated.
 
-**Routes:** draft saves increment revisions and deploys create immutable versions. Compare configured graphs with both draft and active state, avoid repeat writes on unchanged applies, and define partial-failure/concurrent-edit recovery. A successful route create followed by a failed deployment must remain recoverable.
+**Routes:** draft saves increment revisions and deploys create immutable versions. The implemented draft resource avoids unchanged saves, preserves UI layout, handles partial metadata/draft failure and observes active versions without changing them. Deployment currently snapshots the current draft without a caller-supplied revision/graph precondition and always creates another version. Add atomic expected-revision/graph validation and an idempotent deployment receipt before Terraform manages live deployment.
 
 **Invitations:** acceptance, expiration and resend are transitions with effects outside Terraform. Deleting an accepted invitation does not remove the member. Do not promise a managed membership lifecycle until the API can support that contract.
 
 ## Verification and delivery
 
-The local test suite exercises the actual Terraform CLI against a task-owned HTTP test server: create, unchanged plan, update and clear description, import, data-source lookup, external drift, external deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and must verify that task-created projects are deleted. Live Opper acceptance is still pending for the first slice.
+The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live Opper acceptance is still pending.
 
-Keep delivery in focused PRs: projects first, then keys, rules and routes with their own tests. Repository publication, Registry releases and subsequent PR scopes remain separate steps.
+Keep the resource slices in focused local commits. Do not create the GitHub repository, push branches or open PRs until there is a useful release ready to ship and publication is authorized. Live acceptance and a review of the complete example are release gates; Registry release preparation follows once publication is agreed.
 
 ## Owning references
 
