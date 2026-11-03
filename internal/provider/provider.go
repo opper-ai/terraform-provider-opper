@@ -37,7 +37,7 @@ func (p *OpperProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp
 		Attributes: map[string]schema.Attribute{
 			"management_api_key": schema.StringAttribute{
 				Optional: true, Sensitive: true,
-				MarkdownDescription: "Management API key. Defaults to `OPPER_MANAGEMENT_API_KEY`. Requires the project read, write and delete scopes to manage projects.",
+				MarkdownDescription: "Management API key. Defaults to `OPPER_MANAGEMENT_API_KEY`. Grant read and write scopes for each managed surface, plus projects:delete when managing projects.",
 			},
 			"base_url": schema.StringAttribute{
 				Optional:            true,
@@ -87,7 +87,7 @@ func (p *OpperProvider) Configure(ctx context.Context, req provider.ConfigureReq
 }
 
 func (p *OpperProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewProjectResource}
+	return []func() resource.Resource{NewProjectResource, NewAPIKeyResource}
 }
 
 func (p *OpperProvider) DataSources(context.Context) []func() datasource.DataSource {
