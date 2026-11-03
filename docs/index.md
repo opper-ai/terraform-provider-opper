@@ -5,7 +5,7 @@ description: "Manage Opper configuration through the Management API."
 
 # Opper provider
 
-The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The local implementation supports projects, project-owned runtime keys, rules and dynamic-route drafts. It is not yet published to GitHub or the Terraform Registry.
+The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects, project-owned runtime keys, rules and dynamic-route drafts. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper); Terraform Registry releases are not yet published.
 
 ```hcl
 terraform {

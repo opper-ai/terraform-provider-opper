@@ -23,4 +23,4 @@ These results validate the listed workflows, not every rule configuration, accou
 
 The complete example validates against the provider binary; it has not been applied as a single combined live configuration. Live deployment of dynamic routes remains unsupported pending conditional, idempotent backend deployment. Membership management and the other API gaps remain in the [coverage plan](coverage.md).
 
-The repository, commits and validation records remain local. GitHub publication and Terraform Registry releases have not been performed.
+The tested baseline and this validation record are published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Terraform Registry releases have not been published.

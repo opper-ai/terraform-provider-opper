@@ -1,7 +1,7 @@
 # Terraform provider for Opper
 
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
-This local implementation provides projects, project-owned runtime keys, rules and dynamic-route drafts. It is unreleased and has not been published to GitHub or the Terraform Registry.
+This provider manages projects, project-owned runtime keys, rules and dynamic-route drafts. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
 The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Route deployment and member management are not implemented yet.
 
@@ -86,7 +86,7 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
 
 These tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
 
-Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI uses the same command once the repository is published. Until then, feature work remains in local commits.
+Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 
 ## Lifecycle behavior
 

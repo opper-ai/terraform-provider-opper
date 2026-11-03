@@ -2,7 +2,7 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-The local implementation manages projects, project-owned runtime keys, rules and route drafts. Publication is deferred until the provider is ready to ship. Remaining gaps are listed explicitly below.
+The initial provider manages projects, project-owned runtime keys, rules and route drafts. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
@@ -43,7 +43,7 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
-Keep the resource slices in focused local commits. Do not create the GitHub repository, push branches or open PRs until there is a useful release ready to ship and publication is authorized. The live acceptance gate and local complete-example validation are complete for the current resource scope. Registry release preparation and publication remain deferred until agreed; live route deployment and the remaining API gaps are separate scope.
+The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the current resource scope. Terraform Registry release preparation remains a separate step requiring agreement; live route deployment and the remaining API gaps are separate scope.
 
 ## Owning references
 
