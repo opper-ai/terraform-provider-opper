@@ -41,9 +41,9 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 ## Verification and delivery
 
-The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live Opper acceptance is still pending.
+The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
-Keep the resource slices in focused local commits. Do not create the GitHub repository, push branches or open PRs until there is a useful release ready to ship and publication is authorized. Live acceptance and a review of the complete example are release gates; Registry release preparation follows once publication is agreed.
+Keep the resource slices in focused local commits. Do not create the GitHub repository, push branches or open PRs until there is a useful release ready to ship and publication is authorized. The live acceptance gate and local complete-example validation are complete for the current resource scope. Registry release preparation and publication remain deferred until agreed; live route deployment and the remaining API gaps are separate scope.
 
 ## Owning references
 

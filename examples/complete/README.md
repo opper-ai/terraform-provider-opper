@@ -26,4 +26,4 @@ The route is saved as a draft. Its `dynamic/terraform-example-router` invocation
 
 Destroying this example revokes its runtime key, deletes its project-scoped rule, and deletes the whole route, including any version deployed outside Terraform. Deleting the project also revokes any additional keys created inside it. This example is intended for an isolated test organization.
 
-This configuration has been validated with the local provider binary. Live acceptance against an Opper organization has not been run; it needs an appropriate management key and a confirmed disposable test organization.
+This configuration has been validated with the local provider binary. Separate live acceptance suites passed for all four resource families on 2026-11-03, with task-resource cleanup verified. The complete configuration itself has not been applied as one combined live deployment; its budget and model-pool graph require the relevant plan and permitted catalog model. See the [acceptance record](../../docs/live-acceptance.md).

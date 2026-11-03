@@ -84,7 +84,7 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
   go test ./internal/provider -run '^TestAcc' -v
 ```
 
-These tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live Opper acceptance has not yet been verified.
+These tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI uses the same command once the repository is published. Until then, feature work remains in local commits.
 
