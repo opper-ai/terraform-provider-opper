@@ -23,7 +23,7 @@ resource "opper_project" "app" {
 | `id` | String | Read-only | Project UUID. |
 | `created_at` | String | Read-only | Creation timestamp returned by Opper, when available. |
 
-Retention is controlled by a rule, not by this resource. Rule management is planned separately.
+Retention is controlled by an [opper_rule](rule.md), not by this resource.
 
 ## Import
 

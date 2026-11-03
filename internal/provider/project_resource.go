@@ -21,7 +21,7 @@ var (
 	_           resource.Resource                = (*ProjectResource)(nil)
 	_           resource.ResourceWithConfigure   = (*ProjectResource)(nil)
 	_           resource.ResourceWithImportState = (*ProjectResource)(nil)
-	uuidPattern                                  = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	uuidPattern                                  = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 )
 
 type ProjectResource struct{ client *client.Client }
@@ -190,5 +190,5 @@ func (v projectNameValidator) ValidateString(ctx context.Context, req validator.
 }
 
 func projectIDValidators() []validator.String {
-	return []validator.String{stringvalidator.RegexMatches(uuidPattern, "must be a project UUID")}
+	return []validator.String{stringvalidator.RegexMatches(uuidPattern, "must be a canonical lowercase UUID")}
 }
