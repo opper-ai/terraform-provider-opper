@@ -5,7 +5,7 @@ description: "Manage Opper configuration through the Management API."
 
 # Opper provider
 
-The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects, project webhook URLs, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper); Terraform Registry releases are not yet published.
+The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects, project webhook URLs, organization model-list preferences (after backend rollout), project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper); Terraform Registry releases are not yet published.
 
 ```hcl
 terraform {
@@ -26,6 +26,7 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Project resource | `projects:read`, `projects:write`, `projects:delete` |
 | Project lookup | `projects:read` |
 | Member lookup and member list data sources | `members:read` |
+| Organization model-list resource / data source | `controls:read`, `controls:write` / `controls:read`; requires backend rollout |
 | Runtime key resource | `apikeys:read`, `apikeys:write` |
 | Project webhook resource | `apikeys:read`, `apikeys:write` |
 | Rule resource | `controls:read`, `controls:write` |

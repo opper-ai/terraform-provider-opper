@@ -1,7 +1,7 @@
 # Terraform provider for Opper
 
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
-This provider manages projects, project webhook URLs, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
+This provider manages projects, project webhook URLs, organization model-list preferences (after backend rollout), project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
 The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Membership writes remain outside the current provider scope.
 
@@ -9,6 +9,7 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 |---|---|
 | [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
+| [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Advertised compat model-list preference; requires backend rollout, destroy retains the preference |
 | [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
 | [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
 | [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
@@ -17,6 +18,8 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
 
 The [`opper_member` data source](docs/data-sources/member.md) finds one existing member by UUID or email, so configurations can reference their UUID in rules. [`opper_members`](docs/data-sources/members.md) lists the organization's members in stable UUID order. Both require only `members:read` and perform no membership changes.
+
+The [`opper_organization_model_list` data source](docs/data-sources/organization_model_list.md) reads the credential's organization UUID and current advertised-model preference without changing it. Its backend API must be rolled out first.
 
 ## Configure
 
