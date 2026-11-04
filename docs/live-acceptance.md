@@ -1,10 +1,20 @@
 # Live acceptance
 
-## Organization model list: pending backend rollout
+## Organization model list: 2026-11-04
 
-`TestAccOrganizationModelListResource` is gated and has not run against production because the new Management API is not deployed. Local real-Terraform tests cover the resource/data source, and a cross-repository integration test exercises actual management-key authentication, HTTP handlers and PostgreSQL: adoption, no-op plan, update, import, external drift, scope refusal/recovery, and destroy retaining the setting. These are local results, not evidence of production availability.
+`TestAccOrganizationModelListResource` passed against Jctest's public Management API in 2.30 seconds after [backend PR #5834](https://github.com/opper-ai/opper/pull/5834) merged as `904ddb691539711355446f19b802a9e2bb827dbc`. The deployed descendant image `1876ea4a8b725bd7699cef3af9519b079f00d9f8` contains that merge; its only additional change is the evroc CNPG infrastructure manifest. API and worker rollout jobs completed successfully in both EKS and evroc in [the production workflow](https://github.com/opper-ai/opper/actions/runs/41816442686).
 
-After rollout, live acceptance must save the Jctest baseline preference and restore it explicitly after Terraform destroy, since destroy intentionally leaves the remote setting unchanged. Verify the setting API, Management MCP and runtime compat model-list responses without inference, then confirm original inventory is preserved.
+The live Terraform workflow adopted the existing setting, checked an unchanged plan, updated to `simplified`, imported by organization UUID, and destroyed the resource while confirming the remote preference remained `simplified`. Acceptance cleanup then explicitly restored the original `all` preference. The data source read the same organization setting. Local real-backend/CLI tests separately cover drift correction, scope refusal/recovery and transactional audit.
+
+Public health and OpenAPI checks passed. The Management MCP catalog contained both new tools; actual read and set calls returned the verified test organization and requested preference. A temporary project-owned runtime key read the compat catalog in all three modes, and each default listing matched its corresponding explicit `view` response:
+
+| Preference | Advertised entries |
+|---|---:|
+| `all` | 1,260 |
+| `simplified` | 326 |
+| `recommended` | 22 |
+
+The temporary project and key were removed. Original project/key/rule/route inventory and webhook overviews were unchanged, and the organization preference was restored to `all`. No inference or webhook deliveries were requested. This live check verifies model discovery behavior; execution eligibility remains covered separately by backend tests. Credentials and raw logs stayed private and outside Git.
 
 ## Baseline: 2026-11-03
 
