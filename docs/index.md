@@ -25,6 +25,7 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 |---|---|
 | Project resource | `projects:read`, `projects:write`, `projects:delete` |
 | Project lookup | `projects:read` |
+| Member lookup and member list data sources | `members:read` |
 | Runtime key resource | `apikeys:read`, `apikeys:write` |
 | Project webhook resource | `apikeys:read`, `apikeys:write` |
 | Rule resource | `controls:read`, `controls:write` |
@@ -39,4 +40,4 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 
 For multiple organizations, use provider aliases with separate management credentials. `base_url` changes the API origin, not the selected organization.
 
-See the [project resource](resources/project.md), [project webhooks](resources/project_webhook.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [live deployments](resources/dynamic_route_deployment.md), [project data source](data-sources/project.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).
+See the [project resource](resources/project.md), [project webhooks](resources/project_webhook.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [live deployments](resources/dynamic_route_deployment.md), [project lookup](data-sources/project.md), [member lookup](data-sources/member.md), [member list](data-sources/members.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).

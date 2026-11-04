@@ -91,5 +91,5 @@ func (p *OpperProvider) Resources(context.Context) []func() resource.Resource {
 }
 
 func (p *OpperProvider) DataSources(context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{NewProjectDataSource}
+	return []func() datasource.DataSource{NewProjectDataSource, NewMemberDataSource, NewMembersDataSource}
 }

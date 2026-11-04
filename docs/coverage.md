@@ -11,7 +11,7 @@ The initial provider manages projects, project webhook URLs, project-owned runti
 | Project webhooks | Read/update default URL; retrieve/rotate signing secret; send test event | `opper_project_webhook` manages only the default URL, with UUID import, drift detection and clearing on destroy. Signing-secret retrieval/rotation and test deliveries remain explicit operations. |
 | Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
 | Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route` manages metadata/drafts; `opper_dynamic_route_deployment` manages conditional live activation and undeployment after backend rollout. |
-| Members and invitations | List/remove members; list/create/revoke invitations | Later: member lookup first. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
+| Members and invitations | List/remove members; list/create/revoke invitations | `opper_member` looks up one existing member by UUID or unambiguous email; `opper_members` lists members in stable UUID order. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
 | BYOK credentials | No public management CRUD | Public API extension required before provider support. |
@@ -40,6 +40,8 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 **Invitations:** acceptance, expiration and resend are transitions with effects outside Terraform. Deleting an accepted invitation does not remove the member. Do not promise a managed membership lifecycle until the API can support that contract.
 
+**Members:** the read-only data sources require `members:read` and never invite, remove or change roles. Lookup by email must match exactly one member (case-insensitive); UUID selection provides stable identity across email changes. Empty email/name/role and an absent account-creation timestamp are valid API values. A missing or ambiguous lookup and API failures remain errors. The current public API returns the complete member collection; the provider checks completeness and sorts by UUID.
+
 **Webhooks:** creation requires an unconfigured default URL; existing settings require project UUID import. Destroy clears the URL and preserves the project and signing secret. Reads use the overview endpoint only. Setting the first URL initializes a signing secret in Opper; the provider never fetches its value or rotates it. Fetching a signing secret separately can also create one. URL writes have no conditional-update contract, so callers must coordinate concurrent writers. No test delivery or inference is part of this resource's lifecycle.
 
 ## Verification and delivery
@@ -49,6 +51,8 @@ The local test suite exercises the actual Terraform CLI against task-owned HTTP 
 The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the baseline four resources (projects, keys, rules and drafts). The conditional deployment increment has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification, including stale plans and lost responses. Its live acceptance passed on 2026-11-03 after the backend rollout, covering activation, unchanged plans, draft updates, disable/re-enable, exact-version import and cleanup with the original inventory restored. Terraform Registry release preparation and remaining API gaps are separate scope.
 
 Project webhook live acceptance passed on 2026-11-04: configure, no-op, update, UUID import, external drift correction, URL-only destroy and project cleanup. The original inventory and webhook overview were restored. The initial URL write created the signing secret; later operations retained it without retrieving its value or requesting a delivery. Local tests cover API failures, import recovery and destroy ownership checks.
+
+Member data source live acceptance passed on 2026-11-04 with a dedicated `members:read` key: list, UUID lookup, case-insensitive email lookup and unchanged plan. Membership and existing resource inventory stayed unchanged. Local tests cover ordering, metadata changes, missing/ambiguous results, deferred selectors, incomplete responses and API failures. Writable membership and invitation lifecycles remain deferred.
 
 ## Owning references
 

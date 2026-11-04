@@ -3,7 +3,7 @@
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
 This provider manages projects, project webhook URLs, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
-The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Member management remains outside the current provider scope.
+The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Membership writes remain outside the current provider scope.
 
 | Resource | Manages |
 |---|---|
@@ -15,6 +15,8 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
+
+The [`opper_member` data source](docs/data-sources/member.md) finds one existing member by UUID or email, so configurations can reference their UUID in rules. [`opper_members`](docs/data-sources/members.md) lists the organization's members in stable UUID order. Both require only `members:read` and perform no membership changes.
 
 ## Configure
 
@@ -91,6 +93,8 @@ The baseline tests create and delete task-owned projects, runtime keys, rules an
 The new conditional deployment test additionally requires `OPPER_TEST_MODEL_ID` set to an exact current, permitted catalog model and the backend deployment API rolled out first. It creates, updates, disables, re-enables and deletes only a task-owned route without running inference. Live acceptance of this surface passed on 2026-11-03 after the backend rollout, including exact-version import and inventory restoration; see the acceptance record.
 
 The webhook acceptance suite creates its own temporary project, configures and updates the default URL, checks import and drift correction, then clears the URL while retaining the project before final cleanup. It sends no webhook test events or model calls. Opper initializes the signing secret on the first URL write; the suite verifies subsequent operations retain that secret.
+
+The member data source suite only reads existing members. Run `go test ./internal/provider -run '^TestAccMemberDataSources$' -count=1 -v` with the same live opt-in flags and a key granting `members:read`. It checks the collection, UUID/email lookup and unchanged plans without inviting, removing or changing anyone. Running all live suites requires the combined scopes of their respective resources and data sources.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 

@@ -26,6 +26,14 @@ Before and after inventory remained one original project, one original runtime k
 
 Local Terraform CLI tests additionally cover refusing pre-existing URLs (including an exact match), invalid imports, project replacement/deletion, API refusals, interrupted initial writes with explicit import recovery, and refusing destroy after both ordinary external URL drift and an edit between refresh and deletion. The live run does not inject transport or concurrency faults. URL writes have no atomic conditional-update API.
 
+## Member data sources: 2026-11-04
+
+`TestAccMemberDataSources` passed against Jctest's public Management API in 1.31 seconds using a dedicated management key with only `members:read`. The Terraform configuration contained only data sources: organization member listing, lookup of an existing member by UUID, case-insensitive exact email lookup, and an unchanged plan. The live organization had one existing member; its UUID and personal details were kept out of this record.
+
+Complete member metadata before and after the test matched. Existing projects, runtime keys, rules, routes and webhook overviews also matched. No invitations, member removals, role changes, inference or webhook deliveries were requested. The newly authorized read-only test credential was saved privately and retained for future acceptance runs; the original acceptance key's permissions were unchanged.
+
+Local Terraform CLI tests additionally cover missing/ambiguous members, empty collections, metadata changes, deterministic ordering, selectors deferred until apply, API failures and membership disappearance. These transitions were not induced in the live organization. Client tests reject malformed or incomplete member lists before a lookup can select anyone.
+
 ## Deployment rollout verification
 
 The conditional deployment suite ran after [backend PR #5814](https://github.com/opper-ai/opper/pull/5814) was merged as `bfdfd7a358d0f756c85f40805fd60d8de1769dc9` and that exact image completed rollout for the API and workers in both EKS and evroc.
