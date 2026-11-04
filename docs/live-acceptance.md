@@ -1,4 +1,6 @@
-# Live acceptance: 2026-11-03
+# Live acceptance
+
+## Baseline: 2026-11-03
 
 The provider's five opt-in acceptance suites passed against the public Opper Management API in a confirmed test organization on Control Plane. Each suite used uniquely named, task-owned resources and ran separately with a freshly executed Terraform workflow (`-count=1`). Credentials were supplied privately through the environment, outside source control.
 
@@ -13,6 +15,16 @@ The provider's five opt-in acceptance suites passed against the public Opper Man
 Before and after each suite, project, key, rule and route inventories were checked. The original project and runtime key remained; all task-created projects, keys, rules and routes were removed. Management API access was verified against a known project in the selected organization before each run.
 
 No model inference was performed. The baseline four suites created no active route versions; the conditional deployment suite activated only its uniquely named temporary route and removed that route afterward. The rule test changed only its own temporary project's policy. The dedicated management credential remains outside the repository for subsequent authorized acceptance runs.
+
+## Project webhooks: 2026-11-04
+
+`TestAccProjectWebhookResource` passed against the public Management API in Jctest in 4.88 seconds. It created a fresh project, verified its initial webhook overview had no URL or signing secret, set the first URL, checked an unchanged plan, updated the URL, imported by project UUID, corrected an API-driven external edit, and removed only the webhook resource before deleting the parent project.
+
+The first URL write initialized the signing secret, as the API specifies. Subsequent reads, URL updates, import and URL clearing retained that same secret creation timestamp and created no rotation overlap. The test never retrieved a secret value or invoked the secret-rotation or test-delivery endpoints. No inference or webhook delivery was requested.
+
+Before and after inventory remained one original project, one original runtime key, zero rules and zero routes. Original runtime-key metadata and the original project's complete webhook overview were unchanged. All task-created resources were removed. Credentials, Terraform state and raw logs stayed outside the repository.
+
+Local Terraform CLI tests additionally cover refusing pre-existing URLs (including an exact match), invalid imports, project replacement/deletion, API refusals, interrupted initial writes with explicit import recovery, and refusing destroy after both ordinary external URL drift and an edit between refresh and deletion. The live run does not inject transport or concurrency faults. URL writes have no atomic conditional-update API.
 
 ## Deployment rollout verification
 

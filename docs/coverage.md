@@ -2,12 +2,13 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-The initial provider manages projects, project-owned runtime keys, rules, route drafts and conditional live deployments. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
+The initial provider manages projects, project webhook URLs, project-owned runtime keys, rules, route drafts and conditional live deployments. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
 | Projects | List, create, fetch, patch, delete | First slice: `opper_project` resource and data source, UUID import, drift and deletion detection. |
 | Runtime API keys | List, create, delete within a project | `opper_api_key`: project ownership, one-time secret retained in state, metadata-only import, explicit replacement and rotation. |
+| Project webhooks | Read/update default URL; retrieve/rotate signing secret; send test event | `opper_project_webhook` manages only the default URL, with UUID import, drift detection and clearing on destroy. Signing-secret retrieval/rotation and test deliveries remain explicit operations. |
 | Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
 | Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route` manages metadata/drafts; `opper_dynamic_route_deployment` manages conditional live activation and undeployment after backend rollout. |
 | Members and invitations | List/remove members; list/create/revoke invitations | Later: member lookup first. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
@@ -39,11 +40,15 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 **Invitations:** acceptance, expiration and resend are transitions with effects outside Terraform. Deleting an accepted invitation does not remove the member. Do not promise a managed membership lifecycle until the API can support that contract.
 
+**Webhooks:** creation requires an unconfigured default URL; existing settings require project UUID import. Destroy clears the URL and preserves the project and signing secret. Reads use the overview endpoint only. Setting the first URL initializes a signing secret in Opper; the provider never fetches its value or rotates it. Fetching a signing secret separately can also create one. URL writes have no conditional-update contract, so callers must coordinate concurrent writers. No test delivery or inference is part of this resource's lifecycle.
+
 ## Verification and delivery
 
 The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
 The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the baseline four resources (projects, keys, rules and drafts). The conditional deployment increment has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification, including stale plans and lost responses. Its live acceptance passed on 2026-11-03 after the backend rollout, covering activation, unchanged plans, draft updates, disable/re-enable, exact-version import and cleanup with the original inventory restored. Terraform Registry release preparation and remaining API gaps are separate scope.
+
+Project webhook live acceptance passed on 2026-11-04: configure, no-op, update, UUID import, external drift correction, URL-only destroy and project cleanup. The original inventory and webhook overview were restored. The initial URL write created the signing secret; later operations retained it without retrieving its value or requesting a delivery. Local tests cover API failures, import recovery and destroy ownership checks.
 
 ## Owning references
 
