@@ -1,13 +1,14 @@
 # Terraform provider for Opper
 
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
-This provider manages projects, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
+This provider manages projects, project webhook URLs, project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
 The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Member management remains outside the current provider scope.
 
 | Resource | Manages |
 |---|---|
 | [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
+| [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
 | [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
 | [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
 | [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
@@ -88,6 +89,8 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 \
 The baseline tests create and delete task-owned projects, runtime keys, rules and route drafts in the credential's organization. Rule tests need a plan supporting Control Plane rules. Do not point them at an organization that holds user data. Live acceptance for all four resource families passed on 2026-11-03, including cleanup verification. See the [live acceptance record](docs/live-acceptance.md) for coverage and limits.
 
 The new conditional deployment test additionally requires `OPPER_TEST_MODEL_ID` set to an exact current, permitted catalog model and the backend deployment API rolled out first. It creates, updates, disables, re-enables and deletes only a task-owned route without running inference. Live acceptance of this surface passed on 2026-11-03 after the backend rollout, including exact-version import and inventory restoration; see the acceptance record.
+
+The webhook acceptance suite creates its own temporary project, configures and updates the default URL, checks import and drift correction, then clears the URL while retaining the project before final cleanup. It sends no webhook test events or model calls. Opper initializes the signing secret on the first URL write; the suite verifies subsequent operations retain that secret.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 
