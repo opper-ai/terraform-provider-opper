@@ -1,5 +1,11 @@
 # Live acceptance
 
+## Organization model list: pending backend rollout
+
+`TestAccOrganizationModelListResource` is gated and has not run against production because the new Management API is not deployed. Local real-Terraform tests cover the resource/data source, and a cross-repository integration test exercises actual management-key authentication, HTTP handlers and PostgreSQL: adoption, no-op plan, update, import, external drift, scope refusal/recovery, and destroy retaining the setting. These are local results, not evidence of production availability.
+
+After rollout, live acceptance must save the Jctest baseline preference and restore it explicitly after Terraform destroy, since destroy intentionally leaves the remote setting unchanged. Verify the setting API, Management MCP and runtime compat model-list responses without inference, then confirm original inventory is preserved.
+
 ## Baseline: 2026-11-03
 
 The provider's five opt-in acceptance suites passed against the public Opper Management API in a confirmed test organization on Control Plane. Each suite used uniquely named, task-owned resources and ran separately with a freshly executed Terraform workflow (`-count=1`). Credentials were supplied privately through the environment, outside source control.

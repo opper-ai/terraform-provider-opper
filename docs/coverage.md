@@ -16,7 +16,8 @@ The initial provider manages projects, project webhook URLs, project-owned runti
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
 | BYOK credentials | No public management CRUD | Public API extension required before provider support. |
 | Custom roles and member-role changes | No public management CRUD/update | Public API extension required before provider support. |
-| Organization creation/settings and billing | No public management CRUD | Public API extension and lifecycle definition required before provider support. |
+| Organization model-list preference | New GET/PUT API requires backend rollout | `opper_organization_model_list` resource and data source; organization UUID guard, import, drift and destroy retaining the remote preference. |
+| Other organization settings/creation and billing | No public management CRUD | Public API extension and lifecycle definition required before provider support. |
 
 Runtime model calls, traces, generated media and agent conversations are outside the managed-resource scope. The user OAuth MCP has additional discovery/runtime operations and personal keys; those do not imply equivalent management-key API support.
 
@@ -45,6 +46,8 @@ Runtime model calls, traces, generated media and agent conversations are outside
 **Webhooks:** creation requires an unconfigured default URL; existing settings require project UUID import. Destroy clears the URL and preserves the project and signing secret. Reads use the overview endpoint only. Setting the first URL initializes a signing secret in Opper; the provider never fetches its value or rotates it. Fetching a signing secret separately can also create one. URL writes have no conditional-update contract, so callers must coordinate concurrent writers. No test delivery or inference is part of this resource's lifecycle.
 
 ## Verification and delivery
+
+The organization model-list increment has local client/Terraform CLI tests and a cross-repository test against the actual management-key authentication, handlers and PostgreSQL store. It covers setting adoption, no-op, update, import, drift correction, scope refusal and destroy preserving the preference. Production Jctest acceptance remains pending the new backend API rollout; no live model-list setting was changed during this implementation. API/MCP rollout and live verification are required before declaring this increment ready for use.
 
 The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
