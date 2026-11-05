@@ -35,6 +35,8 @@ Replace the illustrative identifier with the intended provider model. Creation d
 
 `credential_version` is Terraform's acknowledged command sequence. It is **not an observed remote credential version**. Creation requires a positive version and nonblank `credential_wo`. Increase the version to rotate; an unchanged version ignores the credential value, including a changed ephemeral value. Metadata-only updates can omit the credential and preserve its exact stored bytes.
 
+Credentials used for creation or a new rotation must be valid UTF-8 and at most 8192 bytes. Invalid input is rejected before sending that mutation and does not create a pending recovery operation. This check also applies to ephemeral values supplied when applying a saved plan.
+
 Omitting the version on an existing resource preserves its acknowledged sequence. An explicitly configured version must be known during planning and cannot decrease. Import starts at zero, meaning Terraform has not acknowledged any credential command for that imported definition.
 
 No credential hashes are persisted to detect input changes. The version is the explicit trigger. A remote credential or hidden configuration edit cannot be identified from the public metadata alone.

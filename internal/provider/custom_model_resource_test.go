@@ -84,6 +84,49 @@ func TestCustomModelResourceWriteOnlySchema(t *testing.T) {
 	}
 }
 
+func TestCustomModelResourceOversizedCredentialRefusedBeforeMutation(t *testing.T) {
+	for label, oversized := range map[string]string{"ascii": strings.Repeat("x", 8193), "multibyte": strings.Repeat("é", 4097)} {
+		t.Run(label, func(t *testing.T) {
+			api := newCustomModelTestAPI(t)
+			h := newCustomModelCLI(t, customModelConfig(api.server.URL, "credential-size-model", "credential-size-create", 1, true))
+			// Ephemeral input can change after planning, so validation must also
+			// protect apply rather than relying on schema/plan checks alone.
+			h.run("valid-create-credential", "", "plan", "-input=false", "-no-color", "-out=create.tfplan")
+			h.run(oversized, `(?i)8192`, "apply", "-input=false", "-no-color", "create.tfplan")
+			if listed := h.run("unused", "", "state", "list"); strings.Contains(listed, customModelAddress) {
+				t.Fatal("local create validation retained a pending resource")
+			}
+			api.mu.Lock()
+			if api.postAttempts != 0 || api.patchAttempts != 0 || len(api.creationReceipts) != 0 {
+				t.Fatal("invalid create credential sent a mutation or retained a receipt")
+			}
+			api.mu.Unlock()
+			h.run(strings.Repeat("y", 8192), "", "apply", "-auto-approve", "-input=false", "-no-color")
+			id := h.attributes()["id"]
+			h.write(customModelConfig(api.server.URL, "credential-size-model", "credential-size-create", 2, true))
+			h.run("valid-rotation-credential", "", "plan", "-input=false", "-no-color", "-out=rotate.tfplan")
+			h.run(oversized, `(?i)8192`, "apply", "-input=false", "-no-color", "rotate.tfplan")
+			if attrs := h.attributes(); attrs["id"] != id || attrs["credential_version"] != float64(1) || attrs["operation_pending"] != false {
+				t.Fatal("local rotation validation changed identity/version or retained a pending operation")
+			}
+			if err := checkCustomModelWrites(api, 1, 0, 0, 0)(nil); err != nil {
+				t.Fatal(err)
+			}
+			h.run(strings.Repeat("é", 4096), "", "apply", "-auto-approve", "-input=false", "-no-color")
+			if attrs := h.attributes(); attrs["id"] != id || attrs["credential_version"] != float64(2) || attrs["operation_pending"] != false {
+				t.Fatal("corrected rotation did not complete without import or state repair")
+			}
+			if err := checkCustomModelWrites(api, 1, 1, 1, 1)(nil); err != nil {
+				t.Fatal(err)
+			}
+			// Credential input is ignored unless the version advances.
+			h.run(oversized, "", "plan", "-input=false", "-no-color", "-detailed-exitcode")
+			h.assertArtifacts([]string{"terraform.tfstate", "terraform.tfstate.backup", "create.tfplan", "rotate.tfplan"}, oversized)
+			h.run("unused", "", "destroy", "-auto-approve", "-input=false", "-no-color")
+		})
+	}
+}
+
 func TestCustomModelResourceLifecycle(t *testing.T) {
 	requireTerraform(t)
 	t.Setenv("TF_VAR_credential", "custom-model-first-secret-canary")

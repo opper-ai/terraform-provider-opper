@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -73,6 +74,15 @@ type customModelPrivateData interface {
 }
 
 const customModelPrivateKey = "custom_model_lifecycle_v1"
+
+// Validate only credentials about to be submitted. Unchanged versions and
+// receipt-only recovery deliberately ignore configured credential material.
+func validateCustomModelMutationCredential(value string) diag.Diagnostics {
+	if !utf8.ValidString(value) || len(value) > 8192 || strings.TrimSpace(value) == "" {
+		return diag.Diagnostics{diag.NewAttributeErrorDiagnostic(path.Root("credential_wo"), "Invalid custom-model credential", "credential_wo must be nonblank valid UTF-8 and no more than 8192 bytes. Correct the value and retry; no mutation was sent.")}
+	}
+	return nil
+}
 
 func loadCustomModelPrivate(ctx context.Context, p customModelPrivateData) (customModelPrivate, error) {
 	var v customModelPrivate
@@ -362,6 +372,10 @@ func (r *CustomModelResource) Create(ctx context.Context, req resource.CreateReq
 		resp.Diagnostics.AddError("Incomplete custom-model create intent", "Creation requires a known creation key, positive credential_version and nonblank credential_wo.")
 		return
 	}
+	resp.Diagnostics.Append(validateCustomModelMutationCredential(credential.ValueString())...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	version := m.CredentialVersion.ValueInt64()
 	m.initialize()
 	key := m.CreationKey.ValueString()
@@ -538,6 +552,10 @@ func (r *CustomModelResource) Update(ctx context.Context, req resource.UpdateReq
 			}
 			if cred.IsNull() || cred.IsUnknown() || strings.TrimSpace(cred.ValueString()) == "" {
 				resp.Diagnostics.AddError("Rotation credential required", "The configured credential_wo must be nonblank and known at apply.")
+				return
+			}
+			resp.Diagnostics.Append(validateCustomModelMutationCredential(cred.ValueString())...)
+			if resp.Diagnostics.HasError() {
 				return
 			}
 			v := cred.ValueString()
