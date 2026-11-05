@@ -127,6 +127,47 @@ func TestCustomModelResourceOversizedCredentialRefusedBeforeMutation(t *testing.
 	}
 }
 
+func TestCustomModelResourceUnicodeBlankNameRefusedBeforeMutation(t *testing.T) {
+	for label, blank := range map[string]string{"nbsp": "\u00a0", "ideographic-space": "\u3000"} {
+		t.Run(label, func(t *testing.T) {
+			api := newCustomModelTestAPI(t)
+			h := newCustomModelCLI(t, customModelConfig(api.server.URL, blank, "unicode-name-create", 1, true))
+			h.run("unicode-name-secret", `(?i)unable to create custom model`, "apply", "-auto-approve", "-input=false", "-no-color")
+			if listed := h.run("unused", "", "state", "list"); strings.Contains(listed, customModelAddress) {
+				t.Fatal("local name validation retained a pending create resource")
+			}
+			api.mu.Lock()
+			mutated := api.postAttempts != 0 || api.patchAttempts != 0 || len(api.creationReceipts) != 0
+			api.mu.Unlock()
+			if mutated {
+				t.Fatal("invalid create name sent a mutation or retained a receipt")
+			}
+			const first, renamed = "模型 café", "modèle \u00a0 東京"
+			h.write(customModelConfig(api.server.URL, first, "unicode-name-create", 1, true))
+			h.run("unicode-name-secret", "", "apply", "-auto-approve", "-input=false", "-no-color")
+			id := h.attributes()["id"]
+			h.write(customModelConfig(api.server.URL, blank, "unicode-name-create", 1, false))
+			h.run("unused", `(?i)unable to update custom model`, "apply", "-auto-approve", "-input=false", "-no-color")
+			if attrs := h.attributes(); attrs["id"] != id || attrs["name"] != first || attrs["credential_version"] != float64(1) || attrs["operation_pending"] != false {
+				t.Fatal("local name validation changed acknowledged state or retained a pending update")
+			}
+			if err := checkCustomModelWrites(api, 1, 0, 0, 0)(nil); err != nil {
+				t.Fatal(err)
+			}
+			h.write(customModelConfig(api.server.URL, renamed, "unicode-name-create", 1, false))
+			h.run("unused", "", "apply", "-auto-approve", "-input=false", "-no-color")
+			if attrs := h.attributes(); attrs["id"] != id || attrs["name"] != renamed || attrs["operation_pending"] != false {
+				t.Fatal("corrected Unicode name did not complete without import or state repair")
+			}
+			if err := checkCustomModelWrites(api, 1, 1, 0, 1)(nil); err != nil {
+				t.Fatal(err)
+			}
+			h.run("unused", "", "plan", "-input=false", "-no-color", "-detailed-exitcode")
+			h.run("unused", "", "destroy", "-auto-approve", "-input=false", "-no-color")
+		})
+	}
+}
+
 func TestCustomModelResourceLifecycle(t *testing.T) {
 	requireTerraform(t)
 	t.Setenv("TF_VAR_credential", "custom-model-first-secret-canary")

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 )
 
@@ -54,7 +53,7 @@ func decodeCreationStateReceipt(raw json.RawMessage, key string) (CustomModelCre
 // older metadata-only creation endpoint, including on an old replica's 404.
 func (c *Client) CreateCustomModelWithState(ctx context.Context, name, identifier, credential, operationKey string) (CustomModelCreationStateResult, error) {
 	if !customModelNameValid(name) || !customModelIdentifierValid(identifier) || !customModelCredentialValid(credential) || !customModelKeyRE.MatchString(operationKey) {
-		return CustomModelCreationStateResult{}, errors.New("invalid custom model creation intent")
+		return CustomModelCreationStateResult{}, &localValidationError{message: "invalid custom model creation intent"}
 	}
 	raw, status, err := c.customModelRequest(ctx, http.MethodPost, customModelCreationsPath, map[string]string{"name": name, "identifier": identifier, "credential": credential, "idempotency_key": operationKey}, 201, 200)
 	if err != nil {
@@ -91,7 +90,7 @@ func (c *Client) CreateCustomModelWithState(ctx context.Context, name, identifie
 // state rather than silently adopting a new credential or configuration.
 func (c *Client) GetCustomModelCreationState(ctx context.Context, operationKey string) (CustomModelCreationStateReceipt, error) {
 	if !customModelKeyRE.MatchString(operationKey) {
-		return CustomModelCreationStateReceipt{}, errors.New("invalid custom model creation operation key")
+		return CustomModelCreationStateReceipt{}, &localValidationError{message: "invalid custom model creation operation key"}
 	}
 	raw, _, err := c.customModelRequest(ctx, http.MethodGet, customModelCreationsPath+"/"+operationKey, nil, 200)
 	if err != nil {

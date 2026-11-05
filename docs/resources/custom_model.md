@@ -37,6 +37,8 @@ Replace the illustrative identifier with the intended provider model. Creation d
 
 Credentials used for creation or a new rotation must be valid UTF-8 and at most 8192 bytes. Invalid input is rejected before sending that mutation and does not create a pending recovery operation. This check also applies to ephemeral values supplied when applying a saved plan.
 
+Names must contain a non-whitespace character, including when using Unicode names. Client validation failures before an HTTP request are definite refusals: correct the input and retry. They do not create pending recovery operations or advance the acknowledged credential version.
+
 Omitting the version on an existing resource preserves its acknowledged sequence. An explicitly configured version must be known during planning and cannot decrease. Import starts at zero, meaning Terraform has not acknowledged any credential command for that imported definition.
 
 No credential hashes are persisted to detect input changes. The version is the explicit trigger. A remote credential or hidden configuration edit cannot be identified from the public metadata alone.

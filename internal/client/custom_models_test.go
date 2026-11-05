@@ -458,11 +458,109 @@ func TestCustomModelTransportAndBoundsFailSafely(t *testing.T) {
 				return &http.Response{StatusCode: 200, Body: body, Header: make(http.Header)}, nil
 			})
 			_, err := c.GetCustomModel(context.Background(), customTestID)
-			if err == nil || strings.Contains(err.Error(), "canary") || strings.Contains(err.Error(), "private-management-key") || calls != 1 {
+			if err == nil || IsLocalValidationError(err) || strings.Contains(err.Error(), "canary") || strings.Contains(err.Error(), "private-management-key") || calls != 1 {
 				t.Fatal("transport error leaked, retried or accepted")
 			}
 			if which == "canceled" && !errors.Is(err, context.Canceled) {
 				t.Fatal("cancellation identity lost")
+			}
+		})
+	}
+}
+
+func TestCustomModelLocalValidationClassification(t *testing.T) {
+	ctx := context.Background()
+	c, _ := New("https://api.opper.ai", "private-management-key", "test")
+	calls := 0
+	c.httpClient.Transport = customModelTransport(func(*http.Request) (*http.Response, error) {
+		calls++
+		return nil, errors.New("unexpected transport call")
+	})
+	check := func(t *testing.T, err error, message string) {
+		t.Helper()
+		if err == nil || !IsLocalValidationError(err) || err.Error() != message || calls != 0 {
+			t.Fatalf("expected classified no-request failure %q, got %v (requests %d)", message, err, calls)
+		}
+		if !IsLocalValidationError(fmt.Errorf("wrapped: %w", err)) {
+			t.Fatal("local classification lost through wrapping")
+		}
+	}
+	for _, id := range []string{"", "not-a-uuid", "00000000-0000-0000-0000-000000000000", customTestID + "?private=canary"} {
+		t.Run("identity/"+id, func(t *testing.T) {
+			_, err := c.GetCustomModel(ctx, id)
+			check(t, err, "invalid custom model UUID")
+			_, err = c.GetCustomModelState(ctx, id)
+			check(t, err, "invalid custom model UUID")
+			_, err = c.UpdateCustomModel(ctx, id, CustomModelUpdateInput{ExpectedChangeToken: customTestToken, IdempotencyKey: "update", Name: stringPtr("valid")})
+			check(t, err, "invalid custom model UUID")
+			check(t, c.DeleteCustomModel(ctx, id, customTestToken), "invalid custom model UUID")
+		})
+	}
+	for _, key := range []string{"", "private/key", strings.Repeat("k", 129)} {
+		t.Run("key/"+key, func(t *testing.T) {
+			_, err := c.GetCustomModelCreation(ctx, key)
+			check(t, err, "invalid custom model creation operation key")
+			_, err = c.GetCustomModelCreationState(ctx, key)
+			check(t, err, "invalid custom model creation operation key")
+			_, err = c.GetCustomModelUpdateOperation(ctx, key)
+			check(t, err, "invalid custom model update operation key")
+			_, err = c.CreateCustomModel(ctx, "valid", "openai/model", "private-credential", key)
+			check(t, err, "invalid custom model creation intent")
+			_, err = c.CreateCustomModelWithState(ctx, "valid", "openai/model", "private-credential", key)
+			check(t, err, "invalid custom model creation intent")
+			_, err = c.UpdateCustomModel(ctx, customTestID, CustomModelUpdateInput{ExpectedChangeToken: customTestToken, IdempotencyKey: key, Name: stringPtr("valid")})
+			check(t, err, "invalid custom model update intent")
+		})
+	}
+	for _, in := range []struct{ label, name, identifier, credential string }{
+		{"Unicode blank name", "\u00a0\u2003", "openai/model", "private-credential"},
+		{"invalid UTF-8 name", string([]byte{0xff}), "openai/model", "private-credential"},
+		{"long name", strings.Repeat("界", 256), "openai/model", "private-credential"},
+		{"invalid identifier", "valid", "private/identifier", "private-credential"},
+		{"long identifier", "valid", "openai/" + strings.Repeat("m", 250), "private-credential"},
+		{"oversized ASCII credential", "valid", "openai/model", strings.Repeat("x", 8193)},
+		{"oversized Unicode credential", "valid", "openai/model", strings.Repeat("é", 4097)},
+		{"blank credential", "valid", "openai/model", "\u00a0\u2003"},
+		{"invalid UTF-8 credential", "valid", "openai/model", string([]byte{0xff})},
+	} {
+		t.Run(in.label, func(t *testing.T) {
+			_, err := c.CreateCustomModel(ctx, in.name, in.identifier, in.credential, "create")
+			check(t, err, "invalid custom model creation intent")
+			_, err = c.CreateCustomModelWithState(ctx, in.name, in.identifier, in.credential, "create")
+			check(t, err, "invalid custom model creation intent")
+			_, err = c.UpdateCustomModel(ctx, customTestID, CustomModelUpdateInput{ExpectedChangeToken: customTestToken, IdempotencyKey: "update", Name: &in.name, Identifier: &in.identifier, Credential: &in.credential})
+			check(t, err, "invalid custom model update intent")
+		})
+	}
+	for _, token := range []string{"", "private-token-canary", "cmv1_" + strings.Repeat("A", 44)} {
+		_, err := c.UpdateCustomModel(ctx, customTestID, CustomModelUpdateInput{ExpectedChangeToken: token, IdempotencyKey: "update", Name: stringPtr("valid")})
+		check(t, err, "invalid custom model update intent")
+		check(t, c.DeleteCustomModel(ctx, customTestID, token), "invalid custom model deletion precondition")
+	}
+	_, err := c.UpdateCustomModel(ctx, customTestID, CustomModelUpdateInput{ExpectedChangeToken: customTestToken, IdempotencyKey: "update"})
+	check(t, err, "invalid custom model update intent")
+	_, _, err = c.customModelRequest(ctx, http.MethodPost, customModelsPath, make(chan int), 201)
+	check(t, err, "could not encode custom model request")
+	c.baseURL = ":invalid-private-origin"
+	_, err = c.CreateCustomModelWithState(ctx, "valid", "openai/model", "private-credential", "create")
+	check(t, err, "could not construct custom model request")
+	if IsLocalValidationError(nil) || IsLocalValidationError(errors.New("invalid custom model creation intent")) {
+		t.Fatal("untyped or nil error classified as local validation")
+	}
+}
+
+func TestCustomModelResponseErrorsAreNotLocalValidation(t *testing.T) {
+	for _, code := range []int{201, 403} {
+		t.Run(fmt.Sprint(code), func(t *testing.T) {
+			c, _ := New("https://api.opper.ai", "private-management-key", "test")
+			calls := 0
+			c.httpClient.Transport = customModelTransport(func(*http.Request) (*http.Response, error) {
+				calls++
+				return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader(`{"private-response":"canary"}`)), Header: make(http.Header)}, nil
+			})
+			_, err := c.CreateCustomModelWithState(context.Background(), "valid", "openai/model", "private-credential", "create")
+			if err == nil || IsLocalValidationError(err) || strings.Contains(err.Error(), "canary") || calls != 1 {
+				t.Fatalf("post-request failure incorrectly classified or leaked: %v", err)
 			}
 		})
 	}

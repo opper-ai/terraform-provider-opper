@@ -87,12 +87,27 @@ const maxCustomModels = 10000
 
 var errCustomModelResponse = errors.New("Opper Management API returned an invalid or incomplete custom model response")
 
+// localValidationError marks a rejected intent or request preparation failure
+// before the HTTP client is called. Its message never contains submitted input.
+type localValidationError struct{ message string }
+
+func (e *localValidationError) Error() string { return e.message }
+
+// IsLocalValidationError reports a definitive pre-request failure, including
+// wrapped errors. Such failures cannot have committed an operation and must not
+// be treated as an uncertain mutation requiring receipt recovery. Responses and
+// transport failures are deliberately excluded, even if their outcome is known.
+func IsLocalValidationError(err error) bool {
+	var localErr *localValidationError
+	return errors.As(err, &localErr)
+}
+
 func validCustomModelID(id string) bool {
 	return customModelUUIDRE.MatchString(id) && id != "00000000-0000-0000-0000-000000000000"
 }
 func customModelPath(id string) (string, error) {
 	if !validCustomModelID(id) {
-		return "", errors.New("invalid custom model UUID")
+		return "", &localValidationError{message: "invalid custom model UUID"}
 	}
 	return customModelsPath + "/" + id, nil
 }
@@ -105,13 +120,13 @@ func (c *Client) customModelRequest(ctx context.Context, method, path string, bo
 	if body != nil {
 		encoded, err := json.Marshal(body)
 		if err != nil {
-			return nil, 0, errors.New("could not encode custom model request")
+			return nil, 0, &localValidationError{message: "could not encode custom model request"}
 		}
 		input = bytes.NewReader(encoded)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, input)
 	if err != nil {
-		return nil, 0, errors.New("could not construct custom model request")
+		return nil, 0, &localValidationError{message: "could not construct custom model request"}
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Accept", "application/json")
@@ -378,7 +393,7 @@ func decodeCreationReceipt(raw json.RawMessage, key string) (CustomModelCreation
 
 func (c *Client) CreateCustomModel(ctx context.Context, name, identifier, credential, operationKey string) (CustomModelCreationResult, error) {
 	if !customModelNameValid(name) || !customModelIdentifierValid(identifier) || !customModelCredentialValid(credential) || !customModelKeyRE.MatchString(operationKey) {
-		return CustomModelCreationResult{}, errors.New("invalid custom model creation intent")
+		return CustomModelCreationResult{}, &localValidationError{message: "invalid custom model creation intent"}
 	}
 	raw, status, err := c.customModelRequest(ctx, http.MethodPost, customModelsPath, map[string]string{"name": name, "identifier": identifier, "credential": credential, "idempotency_key": operationKey}, 201, 200)
 	if err != nil {
@@ -412,7 +427,7 @@ func (c *Client) CreateCustomModel(ctx context.Context, name, identifier, creden
 
 func (c *Client) GetCustomModelCreation(ctx context.Context, operationKey string) (CustomModelCreationReceipt, error) {
 	if !customModelKeyRE.MatchString(operationKey) {
-		return CustomModelCreationReceipt{}, errors.New("invalid custom model creation operation key")
+		return CustomModelCreationReceipt{}, &localValidationError{message: "invalid custom model creation operation key"}
 	}
 	raw, _, err := c.customModelRequest(ctx, http.MethodGet, customModelsPath+"/operations/"+operationKey, nil, 200)
 	if err != nil {
@@ -458,7 +473,7 @@ func (c *Client) UpdateCustomModel(ctx context.Context, id string, input CustomM
 		return CustomModelUpdateResult{}, err
 	}
 	if !customModelTokenRE.MatchString(input.ExpectedChangeToken) || !customModelKeyRE.MatchString(input.IdempotencyKey) || input.Name == nil && input.Identifier == nil && input.Credential == nil || input.Name != nil && !customModelNameValid(*input.Name) || input.Identifier != nil && !customModelIdentifierValid(*input.Identifier) || input.Credential != nil && !customModelCredentialValid(*input.Credential) {
-		return CustomModelUpdateResult{}, errors.New("invalid custom model update intent")
+		return CustomModelUpdateResult{}, &localValidationError{message: "invalid custom model update intent"}
 	}
 	body := map[string]string{"expected_change_token": input.ExpectedChangeToken, "idempotency_key": input.IdempotencyKey}
 	if input.Name != nil {
@@ -498,7 +513,7 @@ func (c *Client) UpdateCustomModel(ctx context.Context, id string, input CustomM
 
 func (c *Client) GetCustomModelUpdateOperation(ctx context.Context, operationKey string) (CustomModelUpdateReceipt, error) {
 	if !customModelKeyRE.MatchString(operationKey) {
-		return CustomModelUpdateReceipt{}, errors.New("invalid custom model update operation key")
+		return CustomModelUpdateReceipt{}, &localValidationError{message: "invalid custom model update operation key"}
 	}
 	raw, _, err := c.customModelRequest(ctx, http.MethodGet, customModelsPath+"/update-operations/"+operationKey, nil, 200)
 	if err != nil {
@@ -520,7 +535,7 @@ func (c *Client) DeleteCustomModel(ctx context.Context, id, expectedToken string
 		return err
 	}
 	if !customModelTokenRE.MatchString(expectedToken) {
-		return errors.New("invalid custom model deletion precondition")
+		return &localValidationError{message: "invalid custom model deletion precondition"}
 	}
 	_, _, err = c.customModelRequest(ctx, http.MethodDelete, path, map[string]string{"expected_change_token": expectedToken}, 204)
 	return err

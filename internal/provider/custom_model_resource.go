@@ -394,7 +394,7 @@ func (r *CustomModelResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	result, err := r.client.CreateCustomModelWithState(ctx, m.Name.ValueString(), m.Identifier.ValueString(), credential.ValueString(), key)
 	if err != nil {
-		if !deploymentUncertain(err) {
+		if client.IsLocalValidationError(err) || !deploymentUncertain(err) {
 			resp.Diagnostics.AddError("Unable to create custom model", err.Error())
 			return
 		}
@@ -571,7 +571,7 @@ func (r *CustomModelResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 		result, e := r.client.UpdateCustomModel(ctx, previous.ID.ValueString(), input)
-		if e != nil && !deploymentUncertain(e) {
+		if e != nil && (client.IsLocalValidationError(e) || !deploymentUncertain(e)) {
 			p.Intent = nil
 			resp.Diagnostics.Append(saveCustomModelPrivate(ctx, resp.Private, p)...)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &previous)...)
