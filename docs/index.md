@@ -23,6 +23,10 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 
 | Surface | Required scopes |
 |---|---|
+| Custom-role resource | `roles:read`, `roles:write`, `roles:delete`; Enterprise and conditional roles backend rollout |
+| Role lookup/catalog | `roles:read` |
+| Member-role resource | `member_roles:read`, `member_roles:write`, `roles:read`; conditional roles backend rollout |
+| Member-role lookup | `member_roles:read` |
 | Custom-model resource | `custom_models:read`, `custom_models:write`, `custom_models:update`, `custom_models:delete`; Terraform 1.11+ and creation-state backend rollout |
 | Custom-model lookup and inventory | `custom_models:read` |
 | Project resource | `projects:read`, `projects:write`, `projects:delete` |

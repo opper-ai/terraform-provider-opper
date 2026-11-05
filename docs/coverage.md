@@ -15,7 +15,7 @@ The initial provider manages projects, project webhook URLs, project-owned runti
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
 | BYOK custom-model definitions | Metadata, creation/recovery with initial-state proof, state and conditional update/deletion | `opper_custom_model` adds write-only credentials and explicit versions, guarded import/drift/recovery; `opper_custom_model` / `opper_custom_models` data sources provide metadata. Terraform live acceptance passed on 2026-11-05 after backend rollout. |
-| Custom roles and member-role changes | No public management CRUD/update | Public API extension required before provider support. |
+| Custom roles and member-role changes | Conditional CRUD/catalog/assignment and receipt recovery implemented locally; backend rollout pending | `opper_custom_role`, `opper_member_role`, `opper_role`, `opper_roles` and member-role lookup. Destination definitions and saved assignments are pinned; destroy explicitly retains or assigns a built-in fallback. No invitation, removal or ownership transfer. Production acceptance remains separately authorized. |
 | Organization model-list preference | New GET/PUT API requires backend rollout | `opper_organization_model_list` resource and data source; organization UUID guard, import, drift and destroy retaining the remote preference. |
 | Other organization settings/creation and billing | No public management CRUD | Public API extension and lifecycle definition required before provider support. |
 
@@ -56,6 +56,19 @@ The initial tested baseline is available on GitHub. Continue in focused commits 
 Project webhook live acceptance passed on 2026-11-04: configure, no-op, update, UUID import, external drift correction, URL-only destroy and project cleanup. The original inventory and webhook overview were restored. The initial URL write created the signing secret; later operations retained it without retrieving its value or requesting a delivery. Local tests cover API failures, import recovery and destroy ownership checks.
 
 Member data source live acceptance passed on 2026-11-04 with a dedicated `members:read` key: list, UUID lookup, case-insensitive email lookup and unchanged plan. Membership and existing resource inventory stayed unchanged. Local tests cover ordering, metadata changes, missing/ambiguous results, deferred selectors, incomplete responses and API failures. Writable membership and invitation lifecycles remain deferred.
+
+Role lifecycle verification passed locally on 2026-11-05 through the actual
+Terraform CLI and provider, real Management Surface, stored management-key
+authentication and disposable PostgreSQL. Thirty CLI steps covered creation,
+same-apply assignment, grant updates, no-op plans, lookups, import, stale saved
+plans, membership edit/revert, explicit retain and pinned fallback destruction.
+The backend recorded 202 authenticated management requests. Effective inference
+permission and restricted-project eligibility changed with the assignment;
+no inference request was sent. All synthetic resources were removed and the
+original seed data matched byte-for-byte. Backend integration tests separately
+cover role dependencies, including budget bindings, and transaction rollback.
+Production acceptance, runtime budget enforcement and a Registry release were
+not part of this local verification.
 
 ## Owning references
 
