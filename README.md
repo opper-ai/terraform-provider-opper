@@ -7,6 +7,7 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 
 | Resource | Manages |
 |---|---|
+| [`opper_custom_model`](docs/resources/custom_model.md) | Default OpenAI BYOK definitions, write-only credentials and guarded recovery; requires the creation-state backend rollout and Terraform 1.11+ |
 | [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
 | [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Advertised compat model-list preference; requires backend rollout, destroy retains the preference |
@@ -16,6 +17,8 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
+
+[`opper_custom_model`](docs/data-sources/custom_model.md) reads one stored model by exact UUID; [`opper_custom_models`](docs/data-sources/custom_models.md) reads complete, ordered metadata inventory. Both need only `custom_models:read` and expose no credentials, arbitrary extras or state tokens.
 
 The [`opper_member` data source](docs/data-sources/member.md) finds one existing member by UUID or email, so configurations can reference their UUID in rules. [`opper_members`](docs/data-sources/members.md) lists the organization's members in stable UUID order. Both require only `members:read` and perform no membership changes.
 

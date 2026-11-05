@@ -69,3 +69,23 @@ These results validate the listed workflows, not every rule configuration, accou
 The complete example validates against the provider binary; it has not been applied as a single combined live configuration. The new conditional deployment resource has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification. Its live acceptance passed after the conditional backend API rollout, as recorded above. The live run does not exercise transport-loss or concurrency fault injection; those paths are verified locally against HTTP fixtures and real PostgreSQL. Membership management and the other API gaps remain in the [coverage plan](coverage.md).
 
 The tested baseline and this validation record are published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Terraform Registry releases have not been published.
+## Custom-model lifecycle: 2026-11-05
+
+`TestAccCustomModelResource` passed against Jctest's public Management API at `api.opper.ai` in 5.38 seconds, with race detection enabled, on provider revision `ce6fa9c`. The separately approved key has only `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete`. Its organization and exact grants were independently verified in the platform UI; the credential remains private and outside the repository.
+
+The subsequent input-validation fixes are verified locally with real Terraform applies: oversized ASCII/multibyte credentials and Unicode-only blank names send no mutation, retain no pending operation, and accept corrected inputs without import or state repair. Credential checks also cover saved-plan applies and valid boundary-sized inputs. The client explicitly identifies validation failures before an HTTP request, keeping them separate from uncertain writes. The production lifecycle run was not repeated for these validation-before-HTTP changes.
+
+The real Terraform workflow created one dummy default-endpoint OpenAI definition, checked an unchanged plan, renamed it, rotated a dummy credential by increasing the explicit version, imported by UUID, checked another unchanged plan, and destroyed the model. Both custom-model data sources ran in the same configuration. Saved states omitted the write-only credential, and the separate import state started at credential version zero.
+
+Complete model metadata and the existing project, runtime-key, rule, route and webhook inventories matched before and after. Custom-model inventory remained empty, and an explicit post-destroy state read returned 404 for the test UUID. Pure recovery retained one creation receipt with the original initial token and two update receipts; all reported `resource_exists:false`, and both update receipts reported `result_matches_current_state:false`. The approved test key, receipts and normal audit history remain. Audit-event counts were not independently queried.
+
+The prerequisite [backend PR #5902](https://github.com/opper-ai/opper/pull/5902) merged as `ed2590333291657b1683f2bf5094d226902fb8e9`. That exact API/worker image completed rollout in EKS and evroc in [the production workflow](https://github.com/opper-ai/opper/actions/runs/42030949580). Public health and the published creation-state contract passed on both endpoints. Authenticated pure recovery and MCP tool/scope checks passed on the primary endpoint; the existing Jctest key returned 401 on evroc, so authenticated evroc behavior and Terraform acceptance were not verified there.
+
+No provider probe or inference was requested. Live acceptance did not inject transport loss, concurrent edits or signing-key rotation. Failure handling has separate local fixture and backend coverage, including a real Management API/PostgreSQL end-to-end workflow for stale-plan refusal and hidden edits. API/MCP acceptance of earlier surfaces is separate evidence from this Terraform lifecycle run. To repeat the suite, obtain authorization and supply the disposable organization's key privately:
+
+```sh
+TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 OPPER_TEST_CUSTOM_MODEL_ACCEPTANCE=1 \
+  go test ./internal/provider -run '^TestAccCustomModelResource$' -count=1 -v
+```
+
+`OPPER_TEST_ORGANIZATION_UUID` records the independently verified organization identity. A broad legacy `TestAcc` run does not enable this suite without its custom-model opt-in. Existing API/MCP creation/update/deletion acceptance does not replace this Terraform workflow.
