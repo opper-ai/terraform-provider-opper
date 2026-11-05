@@ -23,6 +23,8 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 
 | Surface | Required scopes |
 |---|---|
+| Custom-model resource | `custom_models:read`, `custom_models:write`, `custom_models:update`, `custom_models:delete`; Terraform 1.11+ and creation-state backend rollout |
+| Custom-model lookup and inventory | `custom_models:read` |
 | Project resource | `projects:read`, `projects:write`, `projects:delete` |
 | Project lookup | `projects:read` |
 | Member lookup and member list data sources | `members:read` |

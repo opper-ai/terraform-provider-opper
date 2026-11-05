@@ -69,3 +69,15 @@ These results validate the listed workflows, not every rule configuration, accou
 The complete example validates against the provider binary; it has not been applied as a single combined live configuration. The new conditional deployment resource has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification. Its live acceptance passed after the conditional backend API rollout, as recorded above. The live run does not exercise transport-loss or concurrency fault injection; those paths are verified locally against HTTP fixtures and real PostgreSQL. Membership management and the other API gaps remain in the [coverage plan](coverage.md).
 
 The tested baseline and this validation record are published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Terraform Registry releases have not been published.
+## Custom-model lifecycle acceptance: pending
+
+The local custom-model resource and lookups have Terraform CLI fixture tests and a real Management API/PostgreSQL end-to-end workflow. This is **not production Terraform acceptance**. The opt-in initial-state creation API must be deployed first, and the live run needs a separately approved key granting `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete` in the confirmed disposable organization.
+
+The proposed live suite creates one dummy default-OpenAI definition, checks no-op planning, metadata update, explicit dummy credential rotation, exact UUID import and guarded destroy, and verifies restoration of the original custom-model inventory. It performs no provider probe or inference. Creation/update receipts and normal audit history remain after cleanup. Supply the key privately and run only after explicit authorization:
+
+```sh
+TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 OPPER_TEST_CUSTOM_MODEL_ACCEPTANCE=1 \
+  go test ./internal/provider -run '^TestAccCustomModelResource$' -count=1 -v
+```
+
+`OPPER_TEST_ORGANIZATION_UUID` records the independently verified organization identity. A broad legacy `TestAcc` run does not enable this suite without its custom-model opt-in. Existing API/MCP creation/update/deletion acceptance does not replace this Terraform workflow.
