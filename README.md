@@ -3,10 +3,12 @@
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
 This provider manages projects, project webhook URLs, organization model-list preferences (after backend rollout), project-owned runtime keys, rules, dynamic-route drafts and conditional live deployments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). It is unreleased and has not been published to the Terraform Registry.
 
-The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Conditional route deployment requires the new backend API to be rolled out first. Membership writes remain outside the current provider scope.
+The [coverage plan](docs/coverage.md) tracks the remaining management surface and backend prerequisites. Role management requires the conditional roles backend rollout. Member-role assignments manage existing memberships only; invitations, removals and ownership transfer remain outside provider scope.
 
 | Resource | Manages |
 |---|---|
+| [`opper_custom_role`](docs/resources/custom_role.md) | Enterprise custom definitions, pinned updates/deletion and receipt recovery |
+| [`opper_member_role`](docs/resources/member_role.md) | Existing member roles with reviewed destination definitions and explicit retain/fallback destruction |
 | [`opper_custom_model`](docs/resources/custom_model.md) | Default OpenAI BYOK definitions, write-only credentials and guarded recovery; requires the creation-state backend rollout and Terraform 1.11+ |
 | [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
@@ -17,6 +19,8 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
+
+[`opper_role`](docs/data-sources/role.md) and [`opper_roles`](docs/data-sources/roles.md) expose definitions and the permission catalog, including reviewed assignment tokens. [`opper_member_role`](docs/data-sources/member_role.md) reads an existing assignment without changing it. See the [roles example](examples/roles/main.tf).
 
 [`opper_custom_model`](docs/data-sources/custom_model.md) reads one stored model by exact UUID; [`opper_custom_models`](docs/data-sources/custom_models.md) reads complete, ordered metadata inventory. Both need only `custom_models:read` and expose no credentials, arbitrary extras or state tokens.
 
