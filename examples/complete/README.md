@@ -4,7 +4,7 @@ This configuration creates a project, a project-owned runtime key, a project-sco
 
 The budget is **disabled by default**. Set `enable_budget = true` to enforce the USD 100 monthly limit for the new project. Opper still requires a plan that supports writing this rule when it is disabled; a Gateway-only organization can reject the configuration with `402 plan_required`.
 
-The pool graph selects by cost among its configured candidates. This example accepts one explicit candidate; extend the `models` list for a larger pool. Choose an exact current model ID from the [Opper catalog](https://opper.ai/models), or inspect the [model discovery API](https://api.opper.ai/v3/models), and ensure your organization is allowed to use it. No model inference is performed by Terraform.
+The route uses a single model node. Choose an exact current model ID from the [Opper catalog](https://opper.ai/models) or the [model discovery API](https://api.opper.ai/v3/models) that your organization is allowed to use. Deploying the route with Terraform does not invoke the model.
 
 ## Use
 
@@ -26,4 +26,4 @@ The route is saved as a draft. Its `dynamic/terraform-example-router` invocation
 
 Destroying this example revokes its runtime key, deletes its project-scoped rule, and deletes the whole route, including any version deployed outside Terraform. Deleting the project also revokes any additional keys created inside it. This example is intended for an isolated test organization.
 
-This configuration has been validated with the local provider binary. Separate live acceptance suites passed for all four resource families on 2026-11-03, with task-resource cleanup verified. The conditional deployment resource also passed separate live acceptance after backend rollout on 2026-11-03, including activation, disable/re-enable, import and cleanup. The complete configuration itself has not been applied as one combined live deployment; its budget and model-pool graph require the relevant plan and permitted catalog model. See the [acceptance record](../../docs/live-acceptance.md).
+Live acceptance on 2026-11-06 ran this configuration in a disposable organization with both the budget and route deployment enabled. One apply created all five resources, the second plan showed no changes, and destroy restored the original inventory. See the [acceptance record](../../docs/live-acceptance.md#complete-example-2026-11-06).

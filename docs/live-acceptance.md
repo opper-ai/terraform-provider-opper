@@ -103,3 +103,9 @@ The temporary key had only `roles:read`, `roles:write`, and `roles:delete`. Afte
 Terraform on `d334e0d` created one custom role with the built-in Viewer grants and assigned it to a disposable Viewer in the same apply. The member-role data source observed the new assignment and the next plan showed no changes. Destroy restored the pinned Viewer role before deleting the custom role. Reads confirmed the stored and effective assignments were back to Viewer and the full role catalog matched its starting state.
 
 The role creation, member assignment, and Viewer restoration receipts retained their proofs. The temporary key had `roles:read`, `roles:write`, `roles:delete`, `member_roles:read`, and `member_roles:write`. Self-disable returned `204`, the catalog then returned `401`, and the local key file was removed. Effective permission changes and project eligibility were exercised separately in the local Management API and PostgreSQL run.
+
+## Complete example: 2026-11-06
+
+Terraform 1.15.3 with provider revision `f8bf44b` applied the [complete example](../examples/complete) in Jctest using unique fixture names. With the budget and deployment enabled, one apply created the project, project-owned key, budget rule, route draft and exact-revision deployment. The next plan showed no changes. Destroy removed all five resources and left Terraform state empty. The project, key, rule and route inventories matched their starting state. The run did not invoke the model.
+
+The first attempt exposed a draft that the live API could save but could not deploy. A pool requires at least two models, and the example supplied one. Cleanup restored the starting inventory before the example was rerun with a single model node.
