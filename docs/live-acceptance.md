@@ -96,4 +96,10 @@ Terraform on provider revision `d334e0d` passed the custom-role lifecycle agains
 
 The run created one unassigned custom role, verified an unchanged plan, and updated its grants. A conditional API edit to that same fixture made an earlier saved plan stale. Terraform received HTTP `409`, and a read confirmed the edit was preserved. Import restored the reviewed definition to Terraform state, the next plan was unchanged, and destroy removed the role. The original catalog matched before and after. Three operation receipts retained their original proofs and reported the resource absent after deletion.
 
-The temporary key had only `roles:read`, `roles:write`, and `roles:delete`. After cleanup, self-disable returned `204` and the catalog rejected the disabled token with `401`. Live member assignment was outside this run because the sandbox had only its owner. The assignment lifecycle, including fallback and effective permission changes, passed locally through the real Management API and PostgreSQL.
+The temporary key had only `roles:read`, `roles:write`, and `roles:delete`. After cleanup, self-disable returned `204` and the catalog rejected the disabled token with `401`.
+
+## Member-role assignment: 2026-11-06
+
+Terraform on `d334e0d` created one custom role with the built-in Viewer grants and assigned it to a disposable Viewer in the same apply. The member-role data source observed the new assignment and the next plan showed no changes. Destroy restored the pinned Viewer role before deleting the custom role. Reads confirmed the stored and effective assignments were back to Viewer and the full role catalog matched its starting state.
+
+The role creation, member assignment, and Viewer restoration receipts retained their proofs. The temporary key had `roles:read`, `roles:write`, `roles:delete`, `member_roles:read`, and `member_roles:write`. Self-disable returned `204`, the catalog then returned `401`, and the local key file was removed. Effective permission changes and project eligibility were exercised separately in the local Management API and PostgreSQL run.
