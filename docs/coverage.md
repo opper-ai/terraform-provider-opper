@@ -15,7 +15,7 @@ The initial provider manages projects, project webhook URLs, project-owned runti
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
 | BYOK custom-model definitions | Metadata, creation/recovery with initial-state proof, state and conditional update/deletion | `opper_custom_model` adds write-only credentials and explicit versions, guarded import/drift/recovery; `opper_custom_model` / `opper_custom_models` data sources provide metadata. Terraform live acceptance passed on 2026-11-05 after backend rollout. |
-| Custom roles and member-role changes | Conditional CRUD/catalog/assignment and receipt recovery implemented locally; backend rollout pending | `opper_custom_role`, `opper_member_role`, `opper_role`, `opper_roles` and member-role lookup. Destination definitions and saved assignments are pinned; destroy explicitly retains or assigns a built-in fallback. No invitation, removal or ownership transfer. Production acceptance remains separately authorized. |
+| Custom roles and member-role changes | Conditional CRUD, catalog, assignment, and receipt recovery deployed | `opper_custom_role`, `opper_member_role`, `opper_role`, `opper_roles` and member-role lookup. Destination definitions and saved assignments are pinned. Destroy explicitly retains the assignment or sets a built-in fallback. Live custom-role acceptance passed. Member assignment passed locally against the real backend and PostgreSQL. |
 | Organization model-list preference | New GET/PUT API requires backend rollout | `opper_organization_model_list` resource and data source; organization UUID guard, import, drift and destroy retaining the remote preference. |
 | Other organization settings/creation and billing | No public management CRUD | Public API extension and lifecycle definition required before provider support. |
 
@@ -67,8 +67,9 @@ permission and restricted-project eligibility changed with the assignment;
 no inference request was sent. All synthetic resources were removed and the
 original seed data matched byte-for-byte. Backend integration tests separately
 cover role dependencies, including budget bindings, and transaction rollback.
-Production acceptance, runtime budget enforcement and a Registry release were
-not part of this local verification.
+Live custom-role acceptance passed on 2026-11-06 after the backend rollout.
+The sandbox had only its owner, so live member assignment needs a disposable
+non-owner. See the [acceptance record](live-acceptance.md#custom-role-lifecycle-2026-11-06).
 
 ## Owning references
 

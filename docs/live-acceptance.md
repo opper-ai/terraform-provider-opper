@@ -89,3 +89,11 @@ TF_ACC=1 OPPER_TEST_DISPOSABLE_ORG=1 OPPER_TEST_CUSTOM_MODEL_ACCEPTANCE=1 \
 ```
 
 `OPPER_TEST_ORGANIZATION_UUID` records the independently verified organization identity. A broad legacy `TestAcc` run does not enable this suite without its custom-model opt-in. Existing API/MCP creation/update/deletion acceptance does not replace this Terraform workflow.
+
+## Custom-role lifecycle: 2026-11-06
+
+Terraform on provider revision `d334e0d` passed the custom-role lifecycle against the public Management API in a disposable Enterprise organization. The backend migration and rollout completed in EKS and Evroc after [backend PR #5919](https://github.com/opper-ai/opper/pull/5919) merged as `bacd30714`. [Production workflow](https://github.com/opper-ai/opper/actions/runs/42194679596)
+
+The run created one unassigned custom role, verified an unchanged plan, and updated its grants. A conditional API edit to that same fixture made an earlier saved plan stale. Terraform received HTTP `409`, and a read confirmed the edit was preserved. Import restored the reviewed definition to Terraform state, the next plan was unchanged, and destroy removed the role. The original catalog matched before and after. Three operation receipts retained their original proofs and reported the resource absent after deletion.
+
+The temporary key had only `roles:read`, `roles:write`, and `roles:delete`. After cleanup, self-disable returned `204` and the catalog rejected the disabled token with `401`. Live member assignment was outside this run because the sandbox had only its owner. The assignment lifecycle, including fallback and effective permission changes, passed locally through the real Management API and PostgreSQL.
