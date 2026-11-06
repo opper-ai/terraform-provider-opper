@@ -70,15 +70,12 @@ resource "opper_dynamic_route" "app" {
       {
         id      = "START"
         type    = "start"
-        outputs = { next = { elementId = "pool" } }
+        outputs = { next = { elementId = "answer" } }
       },
       {
-        id   = "pool"
-        type = "pool"
-        properties = {
-          order  = "cost"
-          models = [{ model = var.model_id }]
-        }
+        id         = "answer"
+        type       = "model"
+        properties = { model = var.model_id }
         outputs = {
           success  = { elementId = "END" }
           fallback = { elementId = "END" }
