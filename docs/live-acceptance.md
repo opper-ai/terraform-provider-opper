@@ -109,3 +109,28 @@ The role creation, member assignment, and Viewer restoration receipts retained t
 Terraform 1.15.3 with provider revision `f8bf44b` applied the [complete example](../examples/complete) in Jctest using unique fixture names. With the budget and deployment enabled, one apply created the project, project-owned key, budget rule, route draft and exact-revision deployment. The next plan showed no changes. Destroy removed all five resources and left Terraform state empty. The project, key, rule and route inventories matched their starting state. The run did not invoke the model.
 
 The first attempt exposed a draft that the live API could save but could not deploy. A pool requires at least two models, and the example supplied one. Cleanup restored the starting inventory before the example was rerun with a single model node.
+
+## Project access: local verification, 2026-11-11
+
+This is local integration evidence, not production write acceptance. The real
+Terraform CLI and provider called the mounted Management API with a stored,
+scoped test key against disposable PostgreSQL. Seventeen CLI steps produced
+47 authenticated Management requests and six atomic policy audit records.
+Native session reads verified allowed and denied member access after role
+grants, direct grants, revocation and explicit restoration of Organization mode.
+
+The workflow covered unchanged plans, import, stale saved plans after another
+writer's edit, and membership removal that cascaded a grant without increasing
+the project revision. Saved plans did not overwrite those changes. Disabling
+policy writes, removing the key's write scope and disabling its credential
+refused the relevant operations. Destroy retained the Restricted policy and
+sent no network request. Audit attribution distinguished five management-key
+changes from the external human edit. Synthetic fixtures and local credentials
+were cleaned up.
+
+Provider tests separately exercise uncertain and malformed mutation responses,
+organization mismatches, invalid inputs, fixed adopted identities, and an
+Organization-to-Restricted-to-Organization edit after a saved adoption plan.
+They use the real Terraform CLI with HTTP fixtures and do not claim production
+behavior. Production policy writes, grant/revoke acceptance and controlled
+activation remain pending in the project-permissions rollout.
