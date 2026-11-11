@@ -11,6 +11,7 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_member_role`](docs/resources/member_role.md) | Existing member roles with reviewed destination definitions and explicit retain/fallback destruction |
 | [`opper_custom_model`](docs/resources/custom_model.md) | Default OpenAI BYOK definitions, write-only credentials and guarded recovery; requires the creation-state backend rollout and Terraform 1.11+ |
 | [`opper_project`](docs/resources/project.md) | Projects, UUID import, name and description updates |
+| [`opper_project_access`](docs/resources/project_access.md) | Conditional policies on existing projects, UUID import and retain-on-destroy; policy writes require organization activation |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
 | [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Advertised compat model-list preference; requires backend rollout, destroy retains the preference |
 | [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
@@ -19,6 +20,8 @@ The [coverage plan](docs/coverage.md) tracks the remaining management surface an
 | [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
+
+[`opper_project_access`](docs/resources/project_access.md) manages an existing project's Organization or Restricted policy using dedicated `project_access:read` and `project_access:write` scopes. Writes remain disabled by default pending controlled activation. See the [existing-project example](examples/project-access/main.tf); creating a project and restricting it afterward does not make it private from creation. The organization and project cannot change after adoption; use a new resource address for another project and keep the old resource until the new policy apply succeeds. Destroy retains the policy.
 
 [`opper_role`](docs/data-sources/role.md) and [`opper_roles`](docs/data-sources/roles.md) expose definitions and the permission catalog, including reviewed assignment tokens. [`opper_member_role`](docs/data-sources/member_role.md) reads an existing assignment without changing it. See the [roles example](examples/roles/main.tf).
 
