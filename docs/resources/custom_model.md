@@ -7,7 +7,7 @@ description: "Manage an OpenAI BYOK definition with write-only credentials and g
 
 Manages a default-endpoint OpenAI LLM definition. Creation and rotation perform no provider probe or inference. The credential argument is write-only; the provider never writes its value or a credential hash to public or private state. Supply it through an ephemeral variable to keep its source value out of saved plans and configuration artifacts.
 
-Requires Terraform **1.11 or later** and `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete`. The backend must support the opt-in `POST /management/v1/custom-models/creations` and its pure receipt GET, as well as state reads, guarded PATCH/DELETE and update recovery. This resource never falls back to legacy creation. Complete that backend rollout before using it.
+Requires Terraform **1.11 or later** and `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete`. The provider uses `POST /management/v1/custom-models/creations` and its pure receipt GET, as well as state reads, guarded PATCH/DELETE and update recovery. These APIs are deployed; the [live lifecycle acceptance](../live-acceptance.md#custom-model-lifecycle-2026-11-05) passed after rollout. This resource never falls back to legacy creation.
 
 ```hcl
 terraform {

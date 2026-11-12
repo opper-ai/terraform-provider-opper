@@ -10,3 +10,5 @@ terraform-provider-opper
 coverage.out
 .env
 .env.*
+/bin/
+/dist/
