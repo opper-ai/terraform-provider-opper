@@ -134,3 +134,36 @@ Organization-to-Restricted-to-Organization edit after a saved adoption plan.
 They use the real Terraform CLI with HTTP fixtures and do not claim production
 behavior. Production policy writes, grant/revoke acceptance and controlled
 activation remain pending in the project-permissions rollout.
+
+## Project-access lifecycle: 2026-11-12
+
+Terraform 1.15.3 with a fresh local development build of merged provider
+revision `83adbef` passed bounded acceptance against `api.opper.ai`. A temporary
+management key had only `project_access:read` and `project_access:write`. Policy
+writes were enabled only for the designated personal test organization, and
+all policy changes targeted one new empty fixture. No Registry release was used.
+
+Import adopted its existing Restricted policy, the next plan was unchanged,
+and a reviewed roles-only update succeeded. An Owner then added one controlled
+Viewer grant through the native UI after an Organization-mode plan was saved.
+Applying that exact old plan once failed with the provider's policy-precondition
+diagnostic, before a save. This was not Terraform's state-serial refusal: the
+local serial stayed unchanged, and independent reads preserved the Owner's
+complete revision-5 policy.
+
+Destroy with refresh disabled relinquished Terraform ownership while retaining
+that Restricted policy, including both role and individual grants. Import then
+adopted it again, and an explicitly reviewed Organization-mode update cleared
+both grant lists at revision 6. A final retaining destroy left Terraform state
+empty and the remote Organization policy unchanged.
+
+Cleanup confirmed the temporary key disabled, its former credential returning
+401, the local credential removed, and the write gate absent from the deployment
+and all three Ready API pods. The 16 pre-existing projects were unchanged. The
+empty fixture was retained in Organization mode, and native Viewer access was
+restored. No inference was requested.
+
+The existing local and native grant-matrix coverage was reused rather than
+repeated. Evroc Terraform acceptance was deliberately omitted from this bounded
+run; its native regional smoke check is separate evidence. Broader activation
+and Registry publication remain separate decisions.

@@ -1,4 +1,6 @@
-.PHONY: build test check fmt
+.PHONY: build test check fmt release-check
+
+GORELEASER ?= goreleaser
 
 build:
 	go build -o bin/terraform-provider-opper .
@@ -16,3 +18,9 @@ check:
 fmt:
 	gofmt -w main.go internal
 	terraform fmt -recursive examples
+
+# Unsigned local packages only; never uploads or publishes a release.
+release-check:
+	$(GORELEASER) check
+	$(GORELEASER) release --snapshot --clean --skip=sign
+	python3 scripts/check-release.py dist

@@ -2,22 +2,22 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-The initial provider manages projects, project webhook URLs, project-owned runtime keys, rules, route drafts and conditional live deployments. Its tested baseline is published in the private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). Remaining gaps are listed explicitly below.
+The v0.1.0 release candidate includes 11 resources and nine data sources covering the configuration listed below. Its source and acceptance records are maintained in the currently private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper); no Registry release is published yet. The required backend APIs are deployed. Deferred coverage below does not block the first release.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
-| Projects | List, create, fetch, patch, delete | First slice: `opper_project` resource and data source, UUID import, drift and deletion detection. |
+| Projects | List, create, fetch, patch, delete | `opper_project` resource and data source, UUID import, drift and deletion detection. |
 | Runtime API keys | List, create, delete within a project | `opper_api_key`: project ownership, one-time secret retained in state, metadata-only import, explicit replacement and rotation. |
 | Project webhooks | Read/update default URL; retrieve/rotate signing secret; send test event | `opper_project_webhook` manages only the default URL, with UUID import, drift detection and clearing on destroy. Signing-secret retrieval/rotation and test deliveries remain explicit operations. |
 | Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
-| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route` manages metadata/drafts; `opper_dynamic_route_deployment` manages conditional live activation and undeployment after backend rollout. |
+| Dynamic routes | List, create, fetch, metadata/draft update, deploy, versions, simulation, restore, rollback, delete | `opper_dynamic_route` manages metadata/drafts; `opper_dynamic_route_deployment` manages conditional live activation and undeployment. |
 | Members and invitations | List/remove members; list/create/revoke invitations | `opper_member` looks up one existing member by UUID or unambiguous email; `opper_members` lists members in stable UUID order. Resolve acceptance, expiration, resend and membership ownership semantics before writable resources. |
 | Usage | Read-only aggregates | Optional data source if a configuration use case justifies it. Usage changes are not managed infrastructure. |
 | Management keys | Self-disable only | Key creation is a platform bootstrap step, outside provider support. |
 | BYOK custom-model definitions | Metadata, creation/recovery with initial-state proof, state and conditional update/deletion | `opper_custom_model` adds write-only credentials and explicit versions, guarded import/drift/recovery; `opper_custom_model` / `opper_custom_models` data sources provide metadata. Terraform live acceptance passed on 2026-11-05 after backend rollout. |
 | Custom roles and member-role changes | Conditional CRUD, catalog, assignment, and receipt recovery deployed | `opper_custom_role`, `opper_member_role`, `opper_role`, `opper_roles` and member-role lookup. Destination definitions and saved assignments are pinned. Destroy explicitly retains the assignment or sets a built-in fallback. Live custom-role and member assignment acceptance passed. |
-| Restricted project access | Conditional policy GET/PUT and Management MCP deployed in [#6119](https://github.com/opper-ai/opper/pull/6119), with dedicated scopes. Writes remain disabled by default. | [`opper_project_access`](resources/project_access.md) manages existing projects, pins saved plans, requires import of existing Restricted policies and retains access on destroy. Atomic Restricted creation, the dashboard editor, controlled activation and live grant/revoke acceptance remain separate. |
-| Organization model-list preference | New GET/PUT API requires backend rollout | `opper_organization_model_list` resource and data source; organization UUID guard, import, drift and destroy retaining the remote preference. |
+| Restricted project access | Conditional policy GET/PUT and Management MCP deployed in [#6119](https://github.com/opper-ai/opper/pull/6119), with dedicated scopes. Writes remain disabled by default. | [`opper_project_access`](resources/project_access.md) manages existing projects, pins saved plans, requires import of existing Restricted policies and retains access on destroy. Bounded Terraform acceptance passed on 2026-11-12 against `api.opper.ai`, including a native Owner edit that invalidated a saved plan. Atomic Restricted creation is not exposed by the provider; broader activation and regional native checks are owned separately. |
+| Organization model-list preference | GET/PUT API deployed | `opper_organization_model_list` resource and data source; organization UUID guard, import, drift and destroy retaining the remote preference. |
 | Other organization settings/creation and billing | No public management CRUD | Public API extension and lifecycle definition required before provider support. |
 
 Runtime model calls, traces, generated media and agent conversations are outside the managed-resource scope. The user OAuth MCP has additional discovery/runtime operations and personal keys; those do not imply equivalent management-key API support.
@@ -38,7 +38,7 @@ Runtime model calls, traces, generated media and agent conversations are outside
 
 **Rules:** kind and scope are immutable and trigger replacement. Replacement can briefly alter policy enforcement. The provider generates rule UUIDs and compares desired config with an effective server snapshot to handle normalization without perpetual drift. Current Opper retention rules do not delete explicitly stored files; the old confirm_file_deletion flag is deprecated and is not exposed. Per-kind config semantics and supported schema versions remain server-validated.
 
-**Routes:** draft saves increment revisions and deploys create immutable versions. The draft resource avoids unchanged saves and preserves UI layout. The separate deployment resource uses the new mandatory-precondition `/deployments` endpoint, matching route UUID, draft revision and observed active version. It resolves uncertain deploy responses with pure receipt lookup and undeploy responses with pure route reads, retains immutable ownership, and refuses to stop another writer. Failed initial Create recovery may require state removal and exact-version import to avoid Terraform taint replacement. The conditional backend API must be rolled out before use; legacy `/deploy` is never a provider fallback.
+**Routes:** draft saves increment revisions and deploys create immutable versions. The draft resource avoids unchanged saves and preserves UI layout. The separate deployment resource uses the new mandatory-precondition `/deployments` endpoint, matching route UUID, draft revision and observed active version. It resolves uncertain deploy responses with pure receipt lookup and undeploy responses with pure route reads, retains immutable ownership, and refuses to stop another writer. Failed initial Create recovery may require state removal and exact-version import to avoid Terraform taint replacement. The provider uses the deployed conditional backend API; legacy `/deploy` is never a fallback.
 
 **Invitations:** acceptance, expiration and resend are transitions with effects outside Terraform. Deleting an accepted invitation does not remove the member. Do not promise a managed membership lifecycle until the API can support that contract.
 
@@ -71,6 +71,12 @@ cover role dependencies, including budget bindings, and transaction rollback.
 Live acceptance passed on 2026-11-06 after the backend rollout. Terraform verified
 the [custom-role lifecycle](live-acceptance.md#custom-role-lifecycle-2026-11-06)
 and [member assignment with a pinned Viewer fallback](live-acceptance.md#member-role-assignment-2026-11-06).
+
+Project-access local and bounded live Terraform acceptance are recorded in the [acceptance record](live-acceptance.md#project-access-lifecycle-2026-11-12). The temporary write gate and credential were removed after cleanup. Writes remain disabled by default. Evroc Terraform acceptance was deliberately omitted; native regional checks are separate evidence.
+
+## Release boundary
+
+v0.1.0 packages the implemented resources and data sources; it does not activate gated backend features. Invitations and membership ownership need a defined lifecycle before writable resources are added. Other organization settings and billing need additional public management APIs. Usage is a possible read-only addition, while runtime calls, traces and generated content remain outside declarative management. Registry publication, repository visibility, licensing and release signing are release-preparation steps rather than missing API features.
 
 ## Owning references
 

@@ -31,6 +31,7 @@ For projects that must be Restricted from their first moment, add initial policy
 
 Local real-Terraform lifecycle tests and the actual Management API/authentication/PostgreSQL workflow passed. See the [local verification record](live-acceptance.md#project-access-local-verification-2026-11-11).
 
-1. Complete the project-permissions editor, atomic creation and serving-region rollout checks before controlled activation. Keep enforcement active whenever a Restricted policy exists.
-2. Run separately authorized live Terraform policy-write acceptance in a disposable organization with allowed and denied members. This acceptance is pending.
-3. Keep Registry publication separate, and rerun the combined provider example before publication when its managed scope changes.
+Bounded live existing-project Terraform acceptance passed in EKS on 2026-11-12. The [live record](live-acceptance.md#project-access-lifecycle-2026-11-12) distinguishes the tested provider behavior, reused native/local coverage and cleanup from broader regional activation.
+
+1. Keep broader project-permissions activation and creation support in their separately reviewed rollout. Enforcement stays active whenever a Restricted policy exists.
+2. Keep Registry publication separate, and rerun the combined provider example before publication when its managed scope changes.
