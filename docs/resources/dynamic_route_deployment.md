@@ -22,7 +22,7 @@ The draft must be deployable, with a reachable answering path. Defining a deploy
 
 The conditional-deployment backend API is deployed. The provider exclusively uses `POST /management/v1/dynamic-routes/{name}/deployments`, with mandatory route UUID, draft revision, active-version preconditions and an idempotency key. It never falls back to the legacy `/deploy` endpoint, which older servers can accept without enforcing those preconditions. An old replica returns an error on the new path without changing routing.
 
-The backend also provides conditional `/undeploy` and pure `GET .../deployments/{idempotency_key}` receipt lookup. Live acceptance for this resource passed on 2026-11-03 after the backend rollout; see the [acceptance record](../live-acceptance.md). Local tests include actual Terraform CLI workflows against both HTTP fixtures and the real backend with PostgreSQL.
+The backend also provides conditional `/undeploy` and pure `GET .../deployments/{idempotency_key}` receipt lookup. Live acceptance for this resource passed on 2026-11-03 after the backend rollout; see the [acceptance record](https://github.com/opper-ai/terraform-provider-opper/blob/v0.1.0/docs/live-acceptance.md). Local tests include actual Terraform CLI workflows against both HTTP fixtures and the real backend with PostgreSQL.
 
 ## Schema
 

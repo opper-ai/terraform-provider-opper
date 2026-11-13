@@ -56,5 +56,5 @@ release:
     - glob: terraform-registry-manifest.json
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
 
-changelog:
-  disable: true
+# The release workflow supplies reviewed notes with --release-notes. Disabling
+# changelog also discards that file and creates a draft with an empty body.

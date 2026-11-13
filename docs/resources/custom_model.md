@@ -7,7 +7,7 @@ description: "Manage an OpenAI BYOK definition with write-only credentials and g
 
 Manages a default-endpoint OpenAI LLM definition. Creation and rotation perform no provider probe or inference. The credential argument is write-only; the provider never writes its value or a credential hash to public or private state. Supply it through an ephemeral variable to keep its source value out of saved plans and configuration artifacts.
 
-Requires Terraform **1.11 or later** and `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete`. The provider uses `POST /management/v1/custom-models/creations` and its pure receipt GET, as well as state reads, guarded PATCH/DELETE and update recovery. These APIs are deployed; the [live lifecycle acceptance](../live-acceptance.md#custom-model-lifecycle-2026-11-05) passed after rollout. This resource never falls back to legacy creation.
+Requires Terraform **1.11 or later** and `custom_models:read`, `custom_models:write`, `custom_models:update`, and `custom_models:delete`. The provider uses `POST /management/v1/custom-models/creations` and its pure receipt GET, as well as state reads, guarded PATCH/DELETE and update recovery. These APIs are deployed; the [live lifecycle acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/v0.1.0/docs/live-acceptance.md#custom-model-lifecycle-2026-11-05) passed after rollout. This resource never falls back to legacy creation.
 
 ```hcl
 terraform {
@@ -85,4 +85,4 @@ To adopt an inspected changed definition, back up state, remove only its resourc
 
 `id`, `model_provider`, `type`, `credential_present`, `created_at`, `updated_at`, and `change_token` describe stored state. The opaque change token is not an access credential or credential-validity verdict. `operation_id`, `operation_kind`, and `operation_pending` identify recovery work. Do not configure competing resources for the same model UUID.
 
-Local tests exercise actual Terraform plans/applies and interrupted workflows. [Production Terraform acceptance](../live-acceptance.md#custom-model-lifecycle-2026-11-05) passed in the disposable Jctest organization after the creation-state backend rollout, covering create, no-op, rename, dummy credential rotation, lookups, UUID import and guarded destroy. The live run does not inject transport or concurrency faults; those paths retain separate local verification.
+Local tests exercise actual Terraform plans/applies and interrupted workflows. [Production Terraform acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/v0.1.0/docs/live-acceptance.md#custom-model-lifecycle-2026-11-05) passed in the disposable Jctest organization after the creation-state backend rollout, covering create, no-op, rename, dummy credential rotation, lookups, UUID import and guarded destroy. The live run does not inject transport or concurrency faults; those paths retain separate local verification.
