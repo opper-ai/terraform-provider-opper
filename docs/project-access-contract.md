@@ -6,8 +6,9 @@ The conditional policy Management API and Management MCP shipped in [Opper PR #6
 
 Use a single policy per project. `organization` permits members with the existing action permission and requires empty allowlists. `restricted` permits members with that permission and a matching role or direct grant. Built-in Owners and Admins retain access, including when both lists are empty. Role names and member UUIDs identify recipients externally. Validate the role and membership in the project's organization and store their existing internal IDs. Project grants affect eligibility only, so granting a Viewer access to a project does not grant inference or trace-content permissions.
 
-| Operation | Shipped contract |
+| Operation | Contract |
 | --- | --- |
+| `POST /management/v1/projects/with-access` | Dedicated endpoint deployed in both regions after [backend PR #6181](https://github.com/opper-ai/opper/pull/6181). Create project metadata and the required initial policy atomically. Requires `projects:write` and `project_access:write` on a genuine management key. No idempotency key; uncertain results require inspection/import. |
 | `GET /management/v1/projects/{uuid}/access` | Return `organization_uuid`, `project_uuid`, `mode`, sorted `role_keys`, sorted `user_uuids`, `revision`, and an opaque `change_token`. Missing, deleted and foreign projects return the same `404`. |
 | `PUT /management/v1/projects/{uuid}/access` | Replace the complete policy using `expected_change_token`. Return the resulting snapshot. A stale token returns `409` and leaves the policy intact. An identical policy with a valid token is a no-op. |
 
@@ -23,9 +24,13 @@ The [`opper_project_access`](resources/project_access.md) resource manages the s
 
 Organization and project identity cannot change after adoption, and there is no automatic identity replacement. Manage another existing project at a new Terraform resource address, importing first if it is Restricted. Keep the original resource until the new policy apply succeeds, then remove the original block to relinquish ownership while retaining its policy.
 
-Destroy removes Terraform ownership and retains the remote policy. To reopen a project, apply `mode = "organization"` explicitly. A retained grant can block custom role deletion, so remove references in a reviewed policy update before retiring the role. Project deletion and grant cleanup also need an explicit contract. Today a project is soft-deleted and the role foreign key can retain the reference.
+Destroy removes Terraform ownership and retains the remote policy. To reopen a project, apply `mode = "organization"` explicitly. Live project grants block custom role deletion, so remove them in a reviewed policy update before retiring the role. The backend increment supporting atomic creation also retires only the deleted role's grants on soft-deleted projects within the guarded role-deletion transaction. Other grants and the project's Restricted mode remain intact. Keep a project's dependency on its Terraform-managed custom role when omitting creation history so destruction orders the project before the role.
 
-Native project creation supports an initial Restricted policy atomically. This provider does not expose initial policy on project creation: it requires an existing project and a separate plan to read and review its access policy. A separate Terraform project followed by a policy update leaves an organization-wide visibility window and does not provide Restricted access from creation.
+`opper_project.initial_access` creates the project with its complete initial policy through one `POST /management/v1/projects/with-access`. This dedicated endpoint is deployed in both regions; unsupported servers refuse it rather than silently ignoring an unknown field on the legacy project-creation route. There is no fallback, policy GET/PUT or creation retry.
+
+The optional `initial_access` object has required `mode` and optional `role_keys` / `user_uuids`, each defaulting to an empty set. Role and user values may become known during apply. The provider retains the requested snapshot as creation history: metadata refresh and updates ignore subsequent policy drift. Changing or adding a snapshot on an existing/imported project is refused without replacement. Removing it only forgets the snapshot and preserves the policy.
+
+To manage the current policy afterward, explicitly import the project into `opper_project_access` and review a separate plan after its UUID exists. Creating a project without `initial_access` and restricting it later leaves an organization-wide visibility window.
 
 ## Verification and remaining scope
 
@@ -33,5 +38,5 @@ Local real-Terraform lifecycle tests and the actual Management API/authenticatio
 
 Bounded live existing-project Terraform acceptance passed in EKS on 2026-11-12. The [live record](live-acceptance.md#project-access-lifecycle-2026-11-12) distinguishes the tested provider behavior, reused native/local coverage and cleanup from the later general-availability rollout.
 
-1. Keep atomic Restricted creation support in Terraform as a separate increment. Enforcement stays active whenever a Restricted policy exists.
+1. Atomic initial policy creation passed [live Terraform acceptance](live-acceptance.md#atomic-initial-project-access-2026-11-13) on `api.opper.ai` after the dedicated endpoint deployed in both regions. The run used a local provider build; this feature is not included in v0.1.0. Live HTTP/audit counts and Evroc Terraform acceptance are not claimed. Enforcement stays active whenever a Restricted policy exists.
 2. Keep Registry publication separate, and rerun the combined provider example before publication when its managed scope changes.

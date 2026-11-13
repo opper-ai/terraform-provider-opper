@@ -1,5 +1,74 @@
 # Live acceptance
 
+## Atomic initial project access: 2026-11-13
+
+Terraform 1.15.3 passed live `opper_project.initial_access` acceptance against
+`api.opper.ai` in the disposable JC-Enterprise organization. The run used a
+locally packaged build of provider revision `7d14e07`, with binary SHA-256
+`231678633c05239173c2a9ad763ef5cf413b2080c67d77828da83237513a89d8`.
+This feature is not included in the published v0.1.0 provider.
+
+The prerequisite [backend PR #6181](https://github.com/opper-ai/opper/pull/6181)
+merged as `1f2fe212b8fefbd15e4f3a5a194da989d8c1b5ff`. API and worker
+rollouts completed in EKS and Evroc in the
+[production workflow](https://github.com/opper-ai/opper/actions/runs/43432725525).
+Both public hosts returned healthy responses, published the dedicated creation
+path in OpenAPI and refused unauthenticated access. The authenticated Terraform
+workflow ran on `api.opper.ai`; it was not repeated on Evroc.
+
+One apply created an unassigned custom role granting only `projects:read` and a
+project with initial Restricted access through that role. The role key became
+known during the apply. Independent reads confirmed the complete Restricted policy.
+Subsequent no-op plans, a metadata edit and removal of the creation-history
+attribute all preserved that policy. Exact-UUID project import recovered only
+metadata and produced an unchanged plan without inventing creation history.
+Destroy removed the project before the custom role and left empty Terraform
+state. Original project and role inventories matched their starting values.
+No inference, runtime-key creation or member-role assignment was performed.
+
+The temporary, one-day management key used eight scoped permissions. Cleanup
+disabled it in the platform, verified HTTP 401 with its former credential and
+removed the local credential. Retained records are one custom-role creation
+receipt, the soft-deleted Restricted project row, normal audit history and the
+disabled management-key record. Credentials, private identifiers and raw
+artifacts remain outside Git.
+
+Live provider HTTP requests were not instrumented, and no public audit API was
+queried. This record does not claim live request or audit-event counts, or live
+concurrency/transport-fault injection. The counted request/audit and atomic
+visibility checks below are separate local integration evidence. No new provider
+version was published by this acceptance run.
+
+## Atomic initial project access: local verification, 2026-11-13
+
+The unreleased `opper_project.initial_access` increment passed against the actual
+Management Surface, stored management-key authentication and a task-owned,
+migrated PostgreSQL database. This was a local cross-repository workflow, not
+production acceptance. Terraform 1.15.3 installed the task-built provider through
+an isolated filesystem mirror, without development overrides.
+
+One apply created an Enterprise custom role and a project with initial Restricted
+role and member grants; the role key became known during that apply. Exactly one
+`POST /management/v1/projects/with-access` created the project, with no legacy
+project-create fallback. No-op plans and an in-place metadata update preserved
+the policy. A separate real API policy edit remained unchanged by refresh and
+planning, confirming that the stored creation intent is not live policy ownership.
+
+Project UUID import recovered metadata without inventing creation history. An
+explicit `opper_project_access` import then adopted the current policy for a
+conditional update. Final destroy retained the policy resource's normal behavior,
+deleted the project before its custom role, retired the deleted-project role
+reference and left empty Terraform state. The backend recorded one transactional
+project-creation audit. Synthetic fixtures were cleaned up; no inference or
+production calls were made.
+
+Separate tests cover malformed and ambiguous REST/MCP intent, unsupported-server
+refusal, permission revocation and expiry after lock waits, atomic visibility,
+recipient/audit rollback, seed-change refusal and state-only history removal.
+The prerequisite Management API/MCP endpoint subsequently deployed in both
+regions, and live acceptance passed as recorded above. No additional provider
+version was published by these local checks.
+
 ## Organization model list: 2026-11-04
 
 `TestAccOrganizationModelListResource` passed against Jctest's public Management API in 2.30 seconds after [backend PR #5834](https://github.com/opper-ai/opper/pull/5834) merged as `904ddb691539711355446f19b802a9e2bb827dbc`. The deployed descendant image `1876ea4a8b725bd7699cef3af9519b079f00d9f8` contains that merge; its only additional change is the evroc CNPG infrastructure manifest. API and worker rollout jobs completed successfully in both EKS and evroc in [the production workflow](https://github.com/opper-ai/opper/actions/runs/41816442686).

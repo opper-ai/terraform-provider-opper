@@ -44,7 +44,9 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Rule resource | `controls:read`, `controls:write` |
 | Dynamic-route draft and deployment resources | `dynamic_routes:read`, `dynamic_routes:write` |
 
-The APIs required by these resources are deployed. Project-access policy writes are generally available following [backend PR #6174](https://github.com/opper-ai/opper/pull/6174), deployed on 2026-11-13. Existing policies are not converted automatically. `opper_project_access` manages existing projects and retains their policy on destroy. Creating a project and restricting it afterward does not make it private from creation.
+The baseline APIs required by these resources are deployed. The unreleased `opper_project.initial_access` attribute uses the dedicated `POST /management/v1/projects/with-access` endpoint, now deployed in both regions, and additionally requires `project_access:write`. It commits a new project's initial policy atomically and records creation history; use `opper_project_access` for ongoing policy management.
+
+Existing-project policy writes are generally available following [backend PR #6174](https://github.com/opper-ai/opper/pull/6174), deployed on 2026-11-13. Existing policies are not converted automatically. `opper_project_access` retains the policy on destroy. Creating a project without `initial_access` and restricting it afterward does not make it private from creation.
 
 ## Schema
 

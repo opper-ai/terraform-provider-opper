@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Create projects with an atomic initial access policy using `opper_project.initial_access`; requires the new `/management/v1/projects/with-access` backend endpoint.
 - Preserve reviewed release notes in draft builds and verify the release path locally.
 - Fix GitHub-only documentation links when viewed through the Terraform Registry or GitHub releases.
 

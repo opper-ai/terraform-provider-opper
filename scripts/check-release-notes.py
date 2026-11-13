@@ -108,7 +108,8 @@ github_urls:
         thread.start()
         try:
             # Snapshot/publish skips bypass the release-notes path being tested.
-            run(goreleaser, "release", "--clean", "--skip=sign,validate",
+            # Keep loopback upload concurrency bounded on high-core machines.
+            run(goreleaser, "release", "--clean", "--parallelism=2", "--skip=sign,validate",
                 "--release-notes", "notes.md")
         finally:
             server.shutdown()
