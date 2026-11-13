@@ -5,9 +5,9 @@ description: "Manage Opper configuration through the Management API."
 
 # Opper provider
 
-The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper). Version 0.1.0 is being prepared; Terraform Registry releases are not yet published.
+The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper).
 
-Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Once v0.1.0 is published, use the configuration below and run `terraform init`. Before publication, follow the local development instructions.
+Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Use the configuration below and run `terraform init` to install the selected Registry version. For local builds, follow the [development override instructions](../README.md#develop-locally).
 
 ```hcl
 terraform {
@@ -44,7 +44,7 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Rule resource | `controls:read`, `controls:write` |
 | Dynamic-route draft and deployment resources | `dynamic_routes:read`, `dynamic_routes:write` |
 
-The APIs required by these resources are deployed. Project-access policy writes remain disabled by default and require organization activation; publishing the provider does not enable them. `opper_project_access` manages existing projects and retains their policy on destroy. Creating a project and restricting it afterward does not make it private from creation.
+The APIs required by these resources are deployed. Project-access policy writes remain disabled by default and require organization activation; installing the provider does not enable them. `opper_project_access` manages existing projects and retains their policy on destroy. Creating a project and restricting it afterward does not make it private from creation.
 
 ## Schema
 

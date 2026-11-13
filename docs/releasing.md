@@ -1,6 +1,6 @@
 # Releasing the provider
 
-The first planned release is **v0.1.0**. Preparing or merging release tooling does
+The first release is **v0.1.0**. Preparing or merging release tooling does
 not publish a version, make the repository public, or activate backend features.
 
 ## Before the first release
@@ -12,7 +12,7 @@ not publish a version, make the repository public, or activate backend features.
 3. Prepare an organization-owned, passphrase-protected RSA GPG release signing key.
    Add its private key as the GitHub Actions secret `GPG_PRIVATE_KEY` and its
    passphrase as `PASSPHRASE`. Keep a protected backup. Do not commit either value.
-   Register the public key for the `opper-ai` namespace in the Terraform Registry.
+   Register the public key for the `opper-ai` public namespace in HCP Terraform.
 4. Confirm the final acceptance record and that temporary production gates and
    credentials have been cleaned up. Project-access policy writes remain disabled
    by default; publishing this provider does not enable them.
@@ -20,6 +20,35 @@ not publish a version, make the repository public, or activate backend features.
 The Registry requires a public repository, versioned release archives, a protocol
 manifest, checksums, and a GPG signature. See HashiCorp's
 [publishing requirements](https://developer.hashicorp.com/terraform/registry/providers/publishing).
+
+## Publisher account and namespace
+
+The Registry sign-in page now directs provider publishers to **HCP Terraform**.
+Use an Opper-controlled HCP Terraform organization to manage the `opper-ai`
+public namespace. Account creation, accepting terms, granting the GitHub App
+access, claiming a namespace and registering a signing key are separate from
+merging this repository's release tooling.
+
+1. Sign in at [HCP Terraform](https://app.terraform.io/). If a new account is
+   needed, its owner completes credentials, email verification and terms.
+2. Select the intended Opper organization, or create one, and verify its identity
+   before changing namespace ownership. Public namespaces currently require the
+   standard HCP Terraform service; HCP Europe does not support them.
+3. Under **Registry > Public namespaces**, select the existing `opper-ai` namespace
+   or use **New Namespace**. Installing the Terraform Cloud GitHub App may be
+   required. Limit a new installation to `terraform-provider-opper` where possible;
+   review and approve its actual permissions before submitting.
+4. An organization owner creates or claims `opper-ai` from the linked GitHub
+   organization. If it is already claimed elsewhere, resolve ownership rather
+   than publishing under another namespace or transferring it without approval.
+5. Add the approved release **public** GPG key to that namespace. The private key
+   and passphrase go only to the repository's GitHub Actions secrets and the
+   protected operator backup. Owners or teams with **Manage public providers**
+   permission can manage provider artifacts.
+
+HashiCorp documents [namespace creation](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/create_or_claim),
+[namespace management](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/manage)
+and [publishing artifacts](https://developer.hashicorp.com/terraform/cloud-docs/users-teams-organizations/organizations/public-namespace/artifacts).
 
 ## Local package verification
 
@@ -63,10 +92,13 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
 4. Download the draft assets. Verify the checksum signature against the approved
    public key (`gpg --verify *_SHA256SUMS.sig *_SHA256SUMS`), then verify each asset
    checksum. Review the notes and version, then publish the draft explicitly.
-5. For the first release, sign in to the Terraform Registry with an organization
-   administrator and publish `opper-ai/opper` from the public repository. Register
-   the signing key before ingestion. Later published GitHub releases notify the
-   Registry through its release webhook.
+5. For the first release, sign in to HCP Terraform, select the verified Opper
+   organization and **Registry > Public namespaces > opper-ai**, then choose
+   **Publish > Provider**. Select `terraform-provider-opper` and an appropriate
+   category. The operator must review and accept the publishing terms at this
+   step before submitting. Register the signing key before ingestion. Later
+   published GitHub releases notify HCP Terraform and the public Registry through
+   the release integration.
 6. In a clean directory with no development override or filesystem mirror, use
    the configuration below and run `terraform init` and
    `terraform providers schema -json`. Confirm Terraform reports the expected

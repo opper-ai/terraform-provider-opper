@@ -2,7 +2,7 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-The v0.1.0 release candidate includes 11 resources and nine data sources covering the configuration listed below. Its source and acceptance records are maintained in the currently private [GitHub repository](https://github.com/opper-ai/terraform-provider-opper); no Registry release is published yet. The required backend APIs are deployed. Deferred coverage below does not block the first release.
+v0.1.0 includes 11 resources and nine data sources covering the configuration listed below. Source and acceptance records are maintained in the [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). The required backend APIs are deployed. Deferred coverage is listed separately from the supported resources.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
@@ -52,7 +52,7 @@ The organization model-list increment has local client/Terraform CLI tests and a
 
 The local test suite exercises the actual Terraform CLI against task-owned HTTP test servers: create, unchanged plans, updates, enable/disable, import, lookup, replacements, secret recovery, external drift/deletion and destroy. HTTP client tests cover API error paths separately. Opt-in acceptance tests target a confirmed disposable Opper organization and verify task-created resources are deleted. Live acceptance for projects, keys, rules and route drafts passed on 2026-11-03, with pre-existing inventory preserved. See the [acceptance record](live-acceptance.md).
 
-The initial tested baseline is available on GitHub. Continue in focused commits and reviewable PRs, following the repository approval requirements. The live acceptance gate and local complete-example validation are complete for the baseline four resources (projects, keys, rules and drafts). The conditional deployment increment has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification, including stale plans and lost responses. Its live acceptance passed on 2026-11-03 after the backend rollout, covering activation, unchanged plans, draft updates, disable/re-enable, exact-version import and cleanup with the original inventory restored. Terraform Registry release preparation and remaining API gaps are separate scope.
+The live acceptance gate and local complete-example validation are complete for the baseline four resources (projects, keys, rules and drafts). The conditional deployment increment has local HTTP-fixture and real PostgreSQL/backend/Terraform CLI verification, including stale plans and lost responses. Its live acceptance passed on 2026-11-03 after the backend rollout, covering activation, unchanged plans, draft updates, disable/re-enable, exact-version import and cleanup with the original inventory restored. See the [release guide](releasing.md) for packaging and publication requirements.
 
 Project webhook live acceptance passed on 2026-11-04: configure, no-op, update, UUID import, external drift correction, URL-only destroy and project cleanup. The original inventory and webhook overview were restored. The initial URL write created the signing secret; later operations retained it without retrieving its value or requesting a delivery. Local tests cover API failures, import recovery and destroy ownership checks.
 
@@ -76,7 +76,7 @@ Project-access local and bounded live Terraform acceptance are recorded in the [
 
 ## Release boundary
 
-v0.1.0 packages the implemented resources and data sources; it does not activate gated backend features. Invitations and membership ownership need a defined lifecycle before writable resources are added. Other organization settings and billing need additional public management APIs. Usage is a possible read-only addition, while runtime calls, traces and generated content remain outside declarative management. Registry publication, repository visibility, licensing and release signing are release-preparation steps rather than missing API features.
+v0.1.0 packages the implemented resources and data sources; it does not activate gated backend features. Invitations and membership ownership need a defined lifecycle before writable resources are added. Other organization settings and billing need additional public management APIs. Usage is a possible read-only addition, while runtime calls, traces and generated content remain outside declarative management. Release packaging and publication are documented in the [release guide](releasing.md).
 
 ## Owning references
 
