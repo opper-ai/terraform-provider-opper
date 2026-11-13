@@ -1,7 +1,7 @@
 # Releasing the provider
 
 The first release is **v0.1.0**. Preparing or merging release tooling does
-not publish a version, make the repository public, or activate backend features.
+not publish a version, make the repository public, or change project policies.
 
 ## Before the first release
 
@@ -13,9 +13,11 @@ not publish a version, make the repository public, or activate backend features.
    Add its private key as the GitHub Actions secret `GPG_PRIVATE_KEY` and its
    passphrase as `PASSPHRASE`. Keep a protected backup. Do not commit either value.
    Register the public key for the `opper-ai` public namespace in HCP Terraform.
-4. Confirm the final acceptance record and that temporary production gates and
-   credentials have been cleaned up. Project-access policy writes remain disabled
-   by default; publishing this provider does not enable them.
+4. Confirm the final acceptance record and that temporary test credentials and
+   fixtures have been restored or intentionally retained. Project-access policy
+   administration is available to every organization through the dedicated
+   management scopes. Publishing this provider does not change any policy or the
+   default Organization access of new projects.
 
 The Registry requires a public repository, versioned release archives, a protocol
 manifest, checksums, and a GPG signature. See HashiCorp's

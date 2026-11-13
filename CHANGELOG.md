@@ -9,7 +9,7 @@ Initial Terraform provider for the Opper Management API. See the [v0.1.0 release
 - Manage dynamic-route drafts and conditional live deployments as separate resources.
 - Manage default OpenAI BYOK custom-model definitions with write-only credentials and explicit credential versions. Requires Terraform 1.11 or later.
 - Manage Enterprise custom roles and existing member-role assignments, with conditional updates and explicit assignment retention or fallback on destroy.
-- Manage existing-project access policies using saved-plan preconditions. Writes require organization activation; destroy retains the policy.
+- Manage existing-project access policies using saved-plan preconditions. Writes require dedicated management-key scopes; destroy retains the policy.
 - Look up projects, members, model-list preferences, custom models, role definitions/catalogs and member-role assignments through nine data sources.
 
 The initial release includes 11 resources. Invitations, membership removal, ownership transfer, billing and other organization settings are outside its scope. Project creation followed by an access-policy update is not atomic Restricted creation. Runtime-key secrets are retained in Terraform state; protect the state backend.

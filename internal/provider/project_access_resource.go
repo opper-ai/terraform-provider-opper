@@ -52,7 +52,7 @@ func (r *ProjectAccessResource) Schema(_ context.Context, _ resource.SchemaReque
 			Validators: append(projectIDValidators(), stringvalidator.NoneOf("00000000-0000-0000-0000-000000000000"))}
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage access on an existing project using reviewed conditional saves. Requires project_access:read and project_access:write for mutations, plus organization activation. Import already Restricted projects first. Destroy retains the remote policy. Project creation is separate and this resource cannot make a new project private from creation.",
+		MarkdownDescription: "Manage access on an existing project using reviewed conditional saves. Requires project_access:read for planning, refresh and import, and project_access:write for mutations. Import already Restricted projects first. Destroy retains the remote policy. Project creation is separate and this resource cannot make a new project private from creation.",
 		Attributes: map[string]schema.Attribute{
 			"id":                schema.StringAttribute{Computed: true, MarkdownDescription: "Existing project UUID, also used for import."},
 			"organization_uuid": identity("Credential organization UUID. Must be known during planning, match the policy, and cannot change after adoption. Use a separate resource address for another policy."),
