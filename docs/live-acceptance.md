@@ -1,5 +1,47 @@
 # Live acceptance
 
+## Runtime-key IP allowlist: 2026-11-13
+
+Terraform 1.15.3 passed live `opper_api_key.allowed_ips` acceptance against
+`api.opper.ai` in JC-ControlPlane, formerly Jctest. An isolated filesystem mirror
+installed provider revision `eed67e5` (client increment `cde0cac`), binary SHA-256
+`f8bcf9171f5f887b5095998a0a91869676cb2fb031c4d95518601f6075438f1d`.
+The attribute is unreleased and is not included in v0.1.0.
+
+The workflow created one project and runtime key with a `/32` entry canonicalized
+to its host address. An in-place allowlist update, explicit `[]` clearing and
+re-enabling restrictions preserved the key ID and one-time secret. Actual state
+removal and metadata-only import produced an unchanged plan with the policy
+omitted and without recovering the secret. A rotation plan with the list omitted
+was refused. Supplying the explicit policy allowed create-before-destroy rotation:
+the replacement had a new ID and secret, and the original key was absent.
+
+Unbilled `GET /v3/models?include=route` requests verified runtime enforcement,
+with one attempt per stage:
+
+| Stage | Result |
+|---|---|
+| Initial restriction | HTTP 403, `ip_not_allowed` |
+| Explicitly cleared list | HTTP 200 |
+| Restriction re-enabled | HTTP 403, `ip_not_allowed` |
+
+No paid model calls or inference were performed. The existing approved management
+key was reused without changes; no management key was created. After destroy, both
+runtime keys and the fixture project were absent, Terraform state was empty and
+the exact original project inventory was restored. Local state, backups, saved
+plans and the temporary installation/mirror were removed. Redacted logs and safe
+proof were retained privately. The soft-deleted fixture project and normal audit
+history remain; the workflow did not use idempotency receipts.
+
+Provider HTTP writes and audit-event counts were not instrumented. The run was
+not repeated on Evroc and did not measure worst-case cache propagation or inject
+transport/concurrency failures. Runtime authentication caches can still delay
+allowlist changes by up to one minute. Local CLI and HTTP tests separately cover
+malformed responses, failed operations, drift, recovery and replacement refusal.
+The allowlist lifecycle suite also passed on the minimum supported Terraform
+1.11.4. Full provider race tests, packaging and example validation passed. This
+acceptance did not publish a release.
+
 ## Atomic initial project access: 2026-11-13
 
 Terraform 1.15.3 passed live `opper_project.initial_access` acceptance against

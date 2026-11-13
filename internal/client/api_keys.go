@@ -12,13 +12,15 @@ import (
 // listing or replaying a create cannot recover that secret. Do not log this
 // struct or include it in diagnostics.
 type APIKey struct {
-	ID                  int64  `json:"id"`
-	Name                string `json:"name"`
-	Prefix              string `json:"prefix"`
-	Kind                string `json:"kind"`
-	CreatedAt           string `json:"created_at,omitempty"`
-	Key                 string `json:"key,omitempty"`
-	IdempotencyReplayed bool   `json:"-"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Prefix    string `json:"prefix"`
+	Kind      string `json:"kind"`
+	CreatedAt string `json:"created_at,omitempty"`
+	Key       string `json:"key,omitempty"`
+	// Nil means the server did not confirm support; [] is explicitly unrestricted.
+	AllowedIPs          []string `json:"allowed_ips"`
+	IdempotencyReplayed bool     `json:"-"`
 }
 
 // CreateAPIKey mints a project-owned key, which survives removal of the member
@@ -40,17 +42,14 @@ func (c *Client) CreateAPIKey(ctx context.Context, projectID, name, idempotencyK
 	if err != nil {
 		return APIKey{}, err
 	}
-	var envelope struct {
-		Data *APIKey `json:"data"`
-		Meta struct {
-			IdempotencyReplayed bool `json:"idempotency_replayed"`
-		} `json:"meta"`
-	}
-	if err = json.Unmarshal(data, &envelope); err != nil || envelope.Data == nil || envelope.Data.ID <= 0 || envelope.Data.Kind != "project" {
+	key, err := decodeAPIKeyEnvelope(data, true)
+	if key.ID <= 0 || key.Kind != "project" {
 		return APIKey{}, errors.New("Opper Management API returned an invalid project API key response")
 	}
-	envelope.Data.IdempotencyReplayed = envelope.Meta.IdempotencyReplayed
-	return *envelope.Data, nil
+	if err != nil {
+		return key, err
+	}
+	return key, nil
 }
 
 // ListAPIKeys returns metadata for the calling organization's selected project.
@@ -66,17 +65,18 @@ func (c *Client) ListAPIKeys(ctx context.Context, projectID string) ([]APIKey, e
 		return nil, err
 	}
 	var envelope struct {
-		Data *[]APIKey `json:"data"`
+		Data *[]json.RawMessage `json:"data"`
 	}
 	if err = json.Unmarshal(data, &envelope); err != nil || envelope.Data == nil {
 		return nil, errors.New("Opper Management API returned an invalid API key list response")
 	}
-	keys := *envelope.Data
-	for i := range keys {
-		if keys[i].ID <= 0 {
+	keys := make([]APIKey, 0, len(*envelope.Data))
+	for _, raw := range *envelope.Data {
+		key, err := decodeRuntimeAPIKey(raw, false)
+		if err != nil || key.ID <= 0 {
 			return nil, errors.New("Opper Management API returned an invalid API key list response")
 		}
-		keys[i].Key = ""
+		keys = append(keys, key)
 	}
 	return keys, nil
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Manage runtime-key public IP/CIDR allowlists with `opper_api_key.allowed_ips`, including atomic creation, refresh/import and in-place updates without secret rotation. Omission preserves the observed list; explicit `[]` clears it.
 - Create projects with an atomic initial access policy using `opper_project.initial_access`; requires the new `/management/v1/projects/with-access` backend endpoint.
 - Preserve reviewed release notes in draft builds and verify the release path locally.
 - Fix GitHub-only documentation links when viewed through the Terraform Registry or GitHub releases.
