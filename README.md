@@ -14,7 +14,7 @@ The [coverage plan](docs/coverage.md) distinguishes supported configuration from
 | [`opper_project_access`](docs/resources/project_access.md) | Conditional policies on existing projects, UUID import and retain-on-destroy |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
 | [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Advertised compat model-list preference; destroy retains the preference |
-| [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, replacement and rotation |
+| [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, IP allowlists, replacement and rotation |
 | [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
 | [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
 | [`opper_dynamic_route_deployment`](docs/resources/dynamic_route_deployment.md) | Live activation/off/on with exact draft and active-version preconditions |
@@ -134,6 +134,8 @@ Custom-model, custom-role and member-role live workflows also passed. Bounded pr
 - Project creation has no idempotency-key contract. The provider does not blindly retry mutations or adopt projects by name. If a create request may have succeeded but Terraform could not save its response, inspect the project list and import the UUID before retrying.
 
 Do not commit credentials, Terraform state or plan files. Supply the management key through the environment rather than placing it in HCL.
+
+The unreleased [`opper_api_key.allowed_ips`](docs/resources/api_key.md#ip-allowlist) attribute manages public source IPs/CIDRs without rotating the key. Omission preserves an existing key's observed list; `[]` clears it. Every restricted-key replacement requires an explicit list, including manual `-replace`, taint and recovery. Runtime enforcement can take up to one minute, and live allowlist acceptance has not run. This attribute is not included in v0.1.0.
 
 Runtime-key secrets are returned once and retained in Terraform state with the sensitive flag. Import recovers key metadata only. Protect the state backend and review the [key lifecycle](docs/resources/api_key.md) before rotation.
 

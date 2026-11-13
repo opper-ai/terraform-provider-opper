@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,10 +23,15 @@ type apiKeyTestAPI struct {
 	idempotency             map[string]int64
 	nextID                  int64
 	creates, reads, deletes int
+	updates                 int
 	events                  []string
 	failures                map[string]int
 	projectExists           bool
 	omitNextSecret          bool
+	omitAllowedIPs          bool
+	unsupportedAllowlist    bool
+	unconfirmedCreateIPs    bool
+	unconfirmedUpdateIPs    bool
 }
 
 func newAPIKeyTestAPI(t *testing.T) *apiKeyTestAPI {
@@ -50,6 +56,14 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"error":"management-token-must-not-leak"}`)
 		return
 	}
+	if r.Method == http.MethodGet && r.URL.Path == "/v3/openapi.json" {
+		if a.unsupportedAllowlist {
+			fmt.Fprint(w, `{"openapi":"3.0.0","paths":{},"components":{"schemas":{}}}`)
+			return
+		}
+		fmt.Fprint(w, `{"openapi":"3.0.0","paths":{"/management/v1/projects/{uuid}/api-keys":{"post":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateManagementAPIKeyRequest"}}}}}},"/management/v1/projects/{uuid}/api-keys/{id}":{"patch":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateManagementAPIKeyRequest"}}}}}}},"components":{"schemas":{"CreateManagementAPIKeyRequest":{"type":"object","properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}},"UpdateManagementAPIKeyRequest":{"type":"object","required":["allowed_ips"],"properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}}}}}`)
+		return
+	}
 	if !a.projectExists {
 		w.WriteHeader(404)
 		fmt.Fprint(w, `{"error":"project not found"}`)
@@ -63,15 +77,19 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			keys := make([]client.APIKey, 0, len(a.keys))
 			for _, key := range a.keys {
 				key.Key = ""
+				if a.omitAllowedIPs {
+					key.AllowedIPs = nil
+				}
 				keys = append(keys, key)
 			}
 			json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{"total_count": len(keys)}, "data": keys})
 		case http.MethodPost:
 			var body struct {
-				Name           string `json:"name"`
-				Kind           string `json:"kind"`
-				ReturnSecret   bool   `json:"return_secret"`
-				IdempotencyKey string `json:"idempotency_key"`
+				Name           string   `json:"name"`
+				Kind           string   `json:"kind"`
+				ReturnSecret   bool     `json:"return_secret"`
+				IdempotencyKey string   `json:"idempotency_key"`
+				AllowedIPs     []string `json:"allowed_ips"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.Kind != "project" || !body.ReturnSecret {
 				w.WriteHeader(400)
@@ -81,7 +99,7 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			if body.IdempotencyKey != "" {
 				if id, ok := a.idempotency[body.IdempotencyKey]; ok {
 					existing, exists := a.keys[id]
-					if !exists || existing.Name != body.Name {
+					if !exists || existing.Name != body.Name || !slices.Equal(existing.AllowedIPs, body.AllowedIPs) {
 						w.WriteHeader(409)
 						fmt.Fprint(w, `{"error":"idempotency conflict"}`)
 						return
@@ -93,6 +111,7 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			a.nextID++
 			key := client.APIKey{ID: a.nextID, Name: body.Name, Kind: "project", Prefix: fmt.Sprintf("op-test-%d", a.nextID), Key: fmt.Sprintf("op-test-secret-%d", a.nextID), CreatedAt: "2026-11-03T09:00:00Z"}
+			key.AllowedIPs = append([]string{}, body.AllowedIPs...)
 			a.keys[key.ID] = key
 			if body.IdempotencyKey != "" {
 				a.idempotency[body.IdempotencyKey] = key.ID
@@ -103,11 +122,43 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 				key.Key = ""
 				a.omitNextSecret = false
 			}
+			if a.unconfirmedCreateIPs {
+				key.AllowedIPs = nil
+			}
 			w.WriteHeader(201)
 			json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": key})
 		default:
 			w.WriteHeader(405)
 		}
+		return
+	}
+	if r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, base+"/") {
+		if a.unsupportedAllowlist {
+			w.WriteHeader(404)
+			return
+		}
+		id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, base+"/"), 10, 64)
+		key, exists := a.keys[id]
+		if err != nil || !exists {
+			w.WriteHeader(404)
+			return
+		}
+		var body struct {
+			AllowedIPs *[]string `json:"allowed_ips"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AllowedIPs == nil {
+			w.WriteHeader(400)
+			return
+		}
+		key.AllowedIPs = append([]string{}, (*body.AllowedIPs)...)
+		a.keys[id] = key
+		a.updates++
+		a.events = append(a.events, fmt.Sprintf("update:%d", id))
+		if a.unconfirmedUpdateIPs {
+			key.AllowedIPs = nil
+		}
+		key.Key = ""
+		json.NewEncoder(w).Encode(map[string]any{"data": key})
 		return
 	}
 	if r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, base+"/") {

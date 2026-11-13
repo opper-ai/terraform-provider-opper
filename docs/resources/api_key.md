@@ -33,6 +33,7 @@ The management credential needs `apikeys:read` and `apikeys:write`. Managing the
 | `name` | String | Required, replacement | Name identifying the runtime key. Renaming creates a new key and revokes the old one. |
 | `idempotency_key` | String | Optional, replacement | Stable identifier for one create operation: 1–128 letters, digits, dots, underscores, colons or hyphens. Change it for every replacement. |
 | `rotation` | String | Optional, replacement | User-managed rotation marker. Changing it replaces the key. This does not schedule rotation. |
+| `allowed_ips` | Set of strings | Optional, computed | Public source IPs or CIDRs allowed to use the runtime key. Updates in place without rotating its ID or secret. Omit or set null to preserve an existing key's observed list; replacement requires an explicit list. Set `[]` to clear restrictions. |
 | `id` | String | Read-only | Decimal runtime API key ID. |
 | `kind` | String | Read-only | Always `project`. |
 | `prefix` | String | Read-only | Non-secret key prefix returned by Opper. |
@@ -46,9 +47,46 @@ The management credential needs `apikeys:read` and `apikeys:write`. Managing the
 
 The API never returns a key's full secret when listing keys. Refresh preserves a secret already captured in state. Import cannot recover it and sets `secret_available = false`.
 
+## IP allowlist
+
+`allowed_ips` is an unreleased provider feature and is not included in v0.1.0. The backend contract shipped in [Opper PR #6120](https://github.com/opper-ai/opper/pull/6120) and is advertised by both production hosts. A provider build containing this attribute is required.
+
+Supply the public egress addresses used by your application:
+
+```hcl
+variable "runtime_egress_ips" {
+  type        = set(string)
+  description = "Public runtime-client source IPs or CIDRs."
+}
+
+resource "opper_api_key" "restricted" {
+  project_id  = opper_project.app.id
+  name        = "restricted-runtime"
+  allowed_ips = var.runtime_egress_ips
+}
+```
+
+See the [standalone allowlist example](https://github.com/opper-ai/terraform-provider-opper/tree/main/examples/api-key-allowlist) for an existing project. Use the actual public egress addresses of your runtime clients. At most 100 entries are allowed. IPv4 prefixes must be `/8` or narrower; IPv6 prefixes must be `/16` or narrower.
+
+Creation stores the requested list atomically with the key. Later list changes use an in-place update and preserve the key ID, prefix and existing one-time secret. They do not require a new `idempotency_key`. The same `apikeys:read` and `apikeys:write` scopes apply.
+
+Omitting `allowed_ips`, or setting it to null, preserves an existing or imported key's list during refresh and in-place updates. It does not carry that computed list into a replacement. For a new key with no prior state, omission uses the server default. To remove all IP restrictions, explicitly configure `allowed_ips = []`. Removing the argument is not a request to clear it.
+
+The provider trims whitespace, masks CIDR host bits, deduplicates equivalent entries, and normalizes host prefixes, IPv4-mapped addresses and IPv6 spellings. Configured spellings remain in state when semantically equivalent to the server list, avoiding formatting-only drift. Import uses canonical server values. Refresh detects real list changes; an explicitly configured list reconciles them on apply.
+
+Before creating a restricted key, the provider verifies advertised OpenAPI support. An unsupported server is refused before the creation POST. Responses must confirm the requested restriction; a refusal or unconfirmed response is an error. A failed allowlist update does not trigger replacement or an unrestricted fallback. Inspect the remote key after an uncertain creation outcome before retrying.
+
+Runtime authentication caches can delay enforcement of allowlist changes by up to one minute. An accepted update is not a promise of immediate enforcement on every request.
+
+Live allowlist acceptance has not run. The baseline runtime-key acceptance record predates this feature and does not verify allowlist creation, updates or runtime enforcement.
+
 ## Replacement and rotation
 
-The runtime-key API has no update endpoint. Changes to `name`, `project_id`, `idempotency_key` or `rotation` replace the key. By default Terraform revokes the old key before creating its replacement. Where overlapping credentials are appropriate, use:
+**Keep `allowed_ips` explicitly configured when replacing a restricted key.** Supply a fully known list containing the current restrictions or the new desired policy; use `[]` only to intentionally remove all restrictions. This applies to rotation, project/name/idempotency changes, manual `-replace`, taint replacement and recovery after a failed creation.
+
+Terraform discards computed values and private state when applying a replacement, so an omitted/null list is not a preservation guarantee. For normal project, name, rotation or idempotency changes on a key with a nonempty list, the provider rejects an omitted or unknown replacement policy during planning before any mutation. Terraform Core's manual replacement and taint decisions are outside that field-change guard; configure the replacement list explicitly before those operations too.
+
+Only the IP allowlist supports in-place updates. Changes to `name`, `project_id`, `idempotency_key` or `rotation` replace the key. By default Terraform revokes the old key before creating its replacement. Where overlapping credentials are appropriate, use:
 
 ```hcl
 resource "opper_api_key" "app" {
@@ -76,13 +114,15 @@ Add matching resource configuration, then import by `<project_uuid>/<key_id>`:
 terraform import opper_api_key.app 01234567-89ab-4cde-8012-3456789abcde/42
 ```
 
-Only project-owned keys may be imported. The imported key's metadata is refreshed, its secret remains unavailable, and `secret_available` is false. The provider never automatically rotates an imported key to retrieve a secret. Existing consumers can continue using the credential they already have.
+Only project-owned keys may be imported. The imported key's metadata, including its canonical allowlist, is refreshed; its secret remains unavailable, and `secret_available` is false. The provider never automatically rotates an imported key to retrieve a secret. Existing consumers can continue using the credential they already have.
 
 ## Errors and recovery
 
 The provider never automatically retries key creation or revokes a key merely because its one-time secret is unavailable.
 
-If the API returns known key metadata without a secret, the provider keeps the ID in state and reports an error explaining recovery. Choose a new `idempotency_key` and replace the key to capture a new secret. Keeping the ID allows Terraform to revoke the unusable credential during replacement or destroy.
+If the API returns known key metadata without a secret, the provider keeps the ID in state and reports an error explaining recovery. Explicitly configure the intended `allowed_ips` for a restricted replacement and choose a new `idempotency_key`, if configured, before replacing the key to capture a new secret. Keeping the ID allows Terraform to revoke the unusable credential during replacement or destroy.
+
+A creation response that does not confirm the requested allowlist is an error, and Terraform may mark the retained resource tainted. Inspect the remote key before retrying. Configure the replacement allowlist explicitly and use a fresh `idempotency_key` if one is configured; taint does not make an old receipt safe to reuse.
 
 After an uncertain transport failure, a key may have been minted even though Terraform did not receive its ID or secret. Inspect the project's runtime keys before retrying. Reconcile a key that was created by importing its metadata or explicitly revoking it, then create a replacement with a new operation token. A blind retry without an idempotency token can mint an additional unmanaged key; replay with the same token cannot return the original secret.
 
