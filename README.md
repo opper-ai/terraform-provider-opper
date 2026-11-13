@@ -3,7 +3,7 @@
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
 The provider includes projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper).
 
-The [coverage plan](docs/coverage.md) distinguishes supported configuration from deferred features. The baseline management APIs are deployed; atomic initial project access requires the additional endpoint described below. Custom roles require Enterprise. Project-access policy changes require the dedicated management-key scopes. Member-role assignments manage existing memberships only; invitations, removals and ownership transfer remain outside provider scope.
+The [coverage plan](docs/coverage.md) distinguishes supported configuration from deferred features. The management APIs, including the dedicated atomic project-creation endpoint, are deployed. Custom roles require Enterprise. Project-access policy changes require the dedicated management-key scopes. Member-role assignments manage existing memberships only; invitations, removals and ownership transfer remain outside provider scope.
 
 | Resource | Manages |
 |---|---|
@@ -21,7 +21,7 @@ The [coverage plan](docs/coverage.md) distinguishes supported configuration from
 
 The [`opper_project` data source](docs/data-sources/project.md) looks up an existing project by UUID.
 
-Use [`opper_project.initial_access`](docs/resources/project.md#initial-access-is-creation-history) to create a new project and its initial policy atomically through the dedicated `/management/v1/projects/with-access` endpoint. It requires backend support for that endpoint plus `projects:write` and `project_access:write`. The optional snapshot is creation history, not policy drift management: later policy changes are ignored, and removing the snapshot retains the policy. See the [restricted-project example](examples/restricted-project/main.tf).
+Use [`opper_project.initial_access`](docs/resources/project.md#initial-access-is-creation-history) to create a new project and its initial policy atomically through the dedicated `/management/v1/projects/with-access` endpoint. The endpoint is deployed in both regions and requires `projects:write` and `project_access:write`. The optional snapshot is creation history, not policy drift management: later policy changes are ignored, and removing the snapshot retains the policy. See the [restricted-project example](examples/restricted-project/main.tf).
 
 [`opper_project_access`](docs/resources/project_access.md) manages an existing project's Organization or Restricted policy using dedicated `project_access:read` and `project_access:write` scopes. Policy writes are generally available following the [backend rollout](https://github.com/opper-ai/opper/pull/6174) on 2026-11-13; existing policies are not converted automatically. See the [existing-project example](examples/project-access/main.tf); use `opper_project.initial_access` when a new project must be Restricted from creation. Ongoing management through `opper_project_access` requires explicit import and a separate plan after creation. The organization and project cannot change after adoption; use a new resource address for another project and keep the old resource until the new policy apply succeeds. Destroy retains the policy.
 
@@ -119,6 +119,8 @@ The webhook acceptance suite creates its own temporary project, configures and u
 The member data source suite only reads existing members. Run `go test ./internal/provider -run '^TestAccMemberDataSources$' -count=1 -v` with the same live opt-in flags and a key granting `members:read`. It checks the collection, UUID/email lookup and unchanged plans without inviting, removing or changing anyone. Running all live suites requires the combined scopes of their respective resources and data sources.
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
+
+Atomic initial project access passed live acceptance on 2026-11-13 using a local build of this unreleased feature, including unknown role resolution, metadata edits, history removal, import and cleanup. See the [live record](docs/live-acceptance.md#atomic-initial-project-access-2026-11-13); this does not add the feature to v0.1.0.
 
 Custom-model, custom-role and member-role live workflows also passed. Bounded project-access Terraform acceptance passed against `api.opper.ai` on 2026-11-12, including stale-plan refusal, import, retention on destroy and cleanup. Evroc Terraform acceptance was not repeated. See the [acceptance record](docs/live-acceptance.md#project-access-lifecycle-2026-11-12) before planning another live run.
 

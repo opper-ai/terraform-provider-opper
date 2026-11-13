@@ -2,11 +2,11 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-v0.1.0 includes 11 resources and nine data sources covering the configuration listed below. Source and acceptance records are maintained in the [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). The v0.1.0 backend APIs are deployed; the later atomic-creation addition requires the dedicated endpoint rollout described below. Deferred coverage is listed separately from the supported resources.
+v0.1.0 includes 11 resources and nine data sources covering the configuration listed below. Source and acceptance records are maintained in the [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). The v0.1.0 backend APIs and the later atomic-creation endpoint are deployed. The `initial_access` provider addition is not included in v0.1.0. Deferred coverage is listed separately from the supported resources.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
-| Projects | List, create, fetch, patch, delete; dedicated atomic creation endpoint | `opper_project` resource and data source, UUID import, metadata drift and deletion detection. Optional `initial_access` seeds the policy through `/management/v1/projects/with-access`; it is creation history, not ongoing policy management. The dedicated endpoint must be deployed before using this option. |
+| Projects | List, create, fetch, patch, delete; dedicated atomic creation endpoint | `opper_project` resource and data source, UUID import, metadata drift and deletion detection. Optional `initial_access` seeds the policy through `/management/v1/projects/with-access`; it is creation history, not ongoing policy management. The endpoint deployed in both regions after backend PR #6181; live Terraform acceptance passed on 2026-11-13 using a local feature build. |
 | Runtime API keys | List, create, delete within a project | `opper_api_key`: project ownership, one-time secret retained in state, metadata-only import, explicit replacement and rotation. |
 | Project webhooks | Read/update default URL; retrieve/rotate signing secret; send test event | `opper_project_webhook` manages only the default URL, with UUID import, drift detection and clearing on destroy. Signing-secret retrieval/rotation and test deliveries remain explicit operations. |
 | Rules | List, create, patch, delete | `opper_rule`: all four kinds, typed scope targets and JSON config. Typed configuration helpers remain a possible later addition. |
@@ -22,7 +22,7 @@ v0.1.0 includes 11 resources and nine data sources covering the configuration li
 
 Runtime model calls, traces, generated media and agent conversations are outside the managed-resource scope. The user OAuth MCP has additional discovery/runtime operations and personal keys; those do not imply equivalent management-key API support.
 
-Atomic project creation with `initial_access` has local Terraform/client verification; live production acceptance remains pending the dedicated endpoint rollout. The dated existing-project policy acceptance below does not cover atomic creation.
+Atomic project creation with `initial_access` passed [live Terraform acceptance](live-acceptance.md#atomic-initial-project-access-2026-11-13) on `api.opper.ai` after the dedicated endpoint deployed in both regions. Its local counted request/audit verification remains separate evidence. The dated existing-project policy acceptance below does not cover atomic creation.
 
 ## First-slice contract
 
