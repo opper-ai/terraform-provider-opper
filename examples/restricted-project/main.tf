@@ -1,9 +1,11 @@
-# initial_access is not in v0.1.0. Until a version containing this feature is
-# published, use the local provider override described in the README.
+# initial_access was introduced in v0.2.0.
 terraform {
   required_version = ">= 1.11"
   required_providers {
-    opper = { source = "opper-ai/opper" }
+    opper = {
+      source  = "opper-ai/opper"
+      version = "~> 0.2.0"
+    }
   }
 }
 

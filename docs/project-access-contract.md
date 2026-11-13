@@ -38,5 +38,5 @@ Local real-Terraform lifecycle tests and the actual Management API/authenticatio
 
 Bounded live existing-project Terraform acceptance passed in EKS on 2026-11-12. The [live record](live-acceptance.md#project-access-lifecycle-2026-11-12) distinguishes the tested provider behavior, reused native/local coverage and cleanup from the later general-availability rollout.
 
-1. Atomic initial policy creation passed [live Terraform acceptance](live-acceptance.md#atomic-initial-project-access-2026-11-13) on `api.opper.ai` after the dedicated endpoint deployed in both regions. The run used a local provider build; this feature is not included in v0.1.0. Live HTTP/audit counts and Evroc Terraform acceptance are not claimed. Enforcement stays active whenever a Restricted policy exists.
+1. Atomic initial policy creation passed [live Terraform acceptance](live-acceptance.md#atomic-initial-project-access-2026-11-13) on `api.opper.ai` after the dedicated endpoint deployed in both regions. The run used a local provider build of the feature introduced in v0.2.0. Live HTTP/audit counts and Evroc Terraform acceptance are not claimed. Enforcement stays active whenever a Restricted policy exists.
 2. Keep Registry publication separate, and rerun the combined provider example before publication when its managed scope changes.

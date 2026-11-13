@@ -1,11 +1,14 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
-- Manage runtime-key public IP/CIDR allowlists with `opper_api_key.allowed_ips`, including atomic creation, refresh/import and in-place updates without secret rotation. Omission preserves the observed list; explicit `[]` clears it.
+See the [v0.2.0 release notes](docs/releases/v0.2.0.md) for upgrade guidance and verification limits.
+
+- Manage runtime-key public IP/CIDR allowlists with `opper_api_key.allowed_ips`, including atomic creation, refresh/import and in-place updates without secret rotation. Omission preserves existing-key restrictions; explicit `[]` clears them. Restricted replacement requires an explicit policy.
 - Create projects with an atomic initial access policy using `opper_project.initial_access`; requires the new `/management/v1/projects/with-access` backend endpoint.
 - Preserve reviewed release notes in draft builds and verify the release path locally.
 - Fix GitHub-only documentation links when viewed through the Terraform Registry or GitHub releases.
+- Build with Go 1.27.4 and update Go dependencies to patched versions.
 
 ## v0.1.0
 

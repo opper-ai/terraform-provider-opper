@@ -35,9 +35,11 @@ The [`opper_organization_model_list` data source](docs/data-sources/organization
 
 ## Install and configure
 
+The v0.2.0 release notes cover [atomic project creation, runtime-key allowlists and upgrade considerations](docs/releases/v0.2.0.md).
+
 Use Terraform **1.11 or later** to use the full provider surface, including write-only BYOK credentials. Recent live acceptance used Terraform 1.15.3.
 
-The configuration below selects the v0.1.x provider series. Run `terraform init` to install the selected Registry version. To use a local build instead, follow the [development override instructions](#develop-locally).
+The configuration below selects the v0.2.x provider series. Run `terraform init` to install the selected Registry version. To use a local build instead, follow the [development override instructions](#develop-locally).
 
 Create a management API key in the Opper platform and provide it through `OPPER_MANAGEMENT_API_KEY`. A runtime key cannot authenticate to the Management API. Managing projects requires `projects:read`, `projects:write` and `projects:delete`; a lookup needs only `projects:read`.
 
@@ -48,7 +50,7 @@ terraform {
   required_providers {
     opper = {
       source  = "opper-ai/opper"
-      version = "~> 0.1.0"
+      version = "~> 0.2.0"
     }
   }
 }
@@ -120,7 +122,7 @@ The member data source suite only reads existing members. Run `go test ./interna
 
 Run `make check` for formatting, vet, race-enabled local tests and a provider build. GitHub CI runs the same checks on `main` and pull requests. Live acceptance remains an explicit, separately authorized operation; CI receives no live organization credential.
 
-Atomic initial project access passed live acceptance on 2026-11-13 using a local build of this unreleased feature, including unknown role resolution, metadata edits, history removal, import and cleanup. See the [live record](docs/live-acceptance.md#atomic-initial-project-access-2026-11-13); this does not add the feature to v0.1.0.
+Atomic initial project access passed live acceptance on 2026-11-13 using a local build of the feature introduced in v0.2.0, including unknown role resolution, metadata edits, history removal, import and cleanup. See the [live record](docs/live-acceptance.md#atomic-initial-project-access-2026-11-13).
 
 Custom-model, custom-role and member-role live workflows also passed. Bounded project-access Terraform acceptance passed against `api.opper.ai` on 2026-11-12, including stale-plan refusal, import, retention on destroy and cleanup. Evroc Terraform acceptance was not repeated. See the [acceptance record](docs/live-acceptance.md#project-access-lifecycle-2026-11-12) before planning another live run.
 
@@ -135,7 +137,7 @@ Custom-model, custom-role and member-role live workflows also passed. Bounded pr
 
 Do not commit credentials, Terraform state or plan files. Supply the management key through the environment rather than placing it in HCL.
 
-The unreleased [`opper_api_key.allowed_ips`](docs/resources/api_key.md#ip-allowlist) attribute manages public source IPs/CIDRs without rotating the key. Omission preserves an existing key's observed list; `[]` clears it. Every restricted-key replacement requires an explicit list, including manual `-replace`, taint and recovery. Runtime enforcement can take up to one minute. [Live allowlist acceptance](docs/live-acceptance.md#runtime-key-ip-allowlist-2026-11-13) passed on `api.opper.ai`, including unbilled runtime allow/deny checks and cleanup. This attribute is not included in v0.1.0.
+[`opper_api_key.allowed_ips`](docs/resources/api_key.md#ip-allowlist), introduced in v0.2.0, manages public source IPs/CIDRs without rotating the key. Omission preserves an existing key's observed list; `[]` clears it. Every restricted-key replacement requires an explicit list, including manual `-replace`, taint and recovery. Runtime enforcement can take up to one minute. [Live allowlist acceptance](docs/live-acceptance.md#runtime-key-ip-allowlist-2026-11-13) passed on `api.opper.ai`, including unbilled runtime allow/deny checks and cleanup.
 
 Runtime-key secrets are returned once and retained in Terraform state with the sensitive flag. Import recovers key metadata only. Protect the state backend and review the [key lifecycle](docs/resources/api_key.md) before rotation.
 
