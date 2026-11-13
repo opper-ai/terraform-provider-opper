@@ -49,7 +49,7 @@ The API never returns a key's full secret when listing keys. Refresh preserves a
 
 ## IP allowlist
 
-`allowed_ips` is an unreleased provider feature and is not included in v0.1.0. The backend contract shipped in [Opper PR #6120](https://github.com/opper-ai/opper/pull/6120) and is advertised by both production hosts. A provider build containing this attribute is required.
+`allowed_ips` was introduced in v0.2.0. The backend contract shipped in [Opper PR #6120](https://github.com/opper-ai/opper/pull/6120) and is advertised by both production hosts.
 
 Supply the public egress addresses used by your application:
 

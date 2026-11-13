@@ -1,11 +1,14 @@
 terraform {
   required_version = ">= 1.11"
   required_providers {
-    opper = { source = "opper-ai/opper" }
+    opper = {
+      source  = "opper-ai/opper"
+      version = "~> 0.2.0"
+    }
   }
 }
 
-# Requires an unreleased provider build with allowed_ips; v0.1.0 lacks it.
+# allowed_ips was introduced in v0.2.0.
 # Supply OPPER_MANAGEMENT_API_KEY privately with apikeys:read/write.
 provider "opper" {}
 

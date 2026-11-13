@@ -16,7 +16,7 @@ terraform {
   required_providers {
     opper = {
       source  = "opper-ai/opper"
-      version = "~> 0.1.0"
+      version = "~> 0.2.0"
     }
   }
 }
@@ -44,9 +44,11 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Rule resource | `controls:read`, `controls:write` |
 | Dynamic-route draft and deployment resources | `dynamic_routes:read`, `dynamic_routes:write` |
 
-The baseline APIs required by these resources are deployed. The unreleased `opper_project.initial_access` attribute uses the dedicated `POST /management/v1/projects/with-access` endpoint, now deployed in both regions, and additionally requires `project_access:write`. It commits a new project's initial policy atomically and records creation history; use `opper_project_access` for ongoing policy management.
+The baseline APIs required by these resources are deployed. Introduced in v0.2.0, the `opper_project.initial_access` attribute uses the dedicated `POST /management/v1/projects/with-access` endpoint, now deployed in both regions, and additionally requires `project_access:write`. It commits a new project's initial policy atomically and records creation history; use `opper_project_access` for ongoing policy management.
 
 Existing-project policy writes are generally available following [backend PR #6174](https://github.com/opper-ai/opper/pull/6174), deployed on 2026-11-13. Existing policies are not converted automatically. `opper_project_access` retains the policy on destroy. Creating a project without `initial_access` and restricting it afterward does not make it private from creation.
+
+Runtime-key [`allowed_ips`](resources/api_key.md#ip-allowlist), also introduced in v0.2.0, supports in-place restriction updates. Existing-key omission preserves the observed list; restricted replacement requires an explicitly configured list. Runtime changes can take up to one minute to affect requests.
 
 ## Schema
 

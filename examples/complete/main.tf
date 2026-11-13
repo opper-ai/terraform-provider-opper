@@ -1,7 +1,9 @@
 terraform {
+  required_version = ">= 1.11"
   required_providers {
     opper = {
-      source = "opper-ai/opper"
+      source  = "opper-ai/opper"
+      version = "~> 0.2.0"
     }
   }
 }

@@ -19,7 +19,7 @@ resource "opper_project" "app" {
 }
 ```
 
-`initial_access` is not included in v0.1.0. It requires a provider build containing this feature. The dedicated backend endpoint deployed in both regions after [backend PR #6181](https://github.com/opper-ai/opper/pull/6181); [live Terraform acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/main/docs/live-acceptance.md#atomic-initial-project-access-2026-11-13) passed on 2026-11-13.
+`initial_access` was introduced in v0.2.0. The dedicated backend endpoint deployed in both regions after [backend PR #6181](https://github.com/opper-ai/opper/pull/6181); [live Terraform acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/main/docs/live-acceptance.md#atomic-initial-project-access-2026-11-13) passed on 2026-11-13.
 
 The provider sends the project and policy in one `POST /management/v1/projects/with-access`. This requires `projects:write` and `project_access:write`; the normal project read and delete scopes are still needed for refresh and destroy. A denied, unsupported or uncertain request is never retried as Organization-access creation. No follow-up policy GET or PUT is needed to create the project. Other resources, such as custom roles, have their own transactions.
 

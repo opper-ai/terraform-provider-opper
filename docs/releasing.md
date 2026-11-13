@@ -1,18 +1,21 @@
 # Releasing the provider
 
-The first release is **v0.1.0**. Preparing or merging release tooling does
-not publish a version, make the repository public, or change project policies.
+The examples below use **v0.2.0**. Preparing or merging release changes does not
+publish a version or change project policies. Tagging creates a draft for review;
+publishing that draft remains a separate operator action.
 
-## Before the first release
+## Before a release
 
 1. Merge the release preparation PR after the normal CI and review gates.
-2. Obtain approval to make `opper-ai/terraform-provider-opper` public and publish
-   v0.1.0. Review the repository and its history for private material before changing
-   visibility. The repository uses Apache 2.0.
-3. Prepare an organization-owned, passphrase-protected RSA GPG release signing key.
-   Add its private key as the GitHub Actions secret `GPG_PRIVATE_KEY` and its
-   passphrase as `PASSPHRASE`. Keep a protected backup. Do not commit either value.
-   Register the public key for the `opper-ai` public namespace in HCP Terraform.
+2. Obtain approval to tag and publish the reviewed version. For a first release,
+   separately approve public visibility after reviewing the repository and history
+   for private material. The repository uses Apache 2.0.
+3. Verify the approved release signing setup: `GPG_PRIVATE_KEY` and `PASSPHRASE`
+   remain GitHub Actions secrets, and the matching public key is registered for
+   the `opper-ai` namespace in HCP Terraform. Reuse the existing approved key;
+   key rotation is separate from a routine release. If setting up a new publisher,
+   prepare an organization-owned, passphrase-protected RSA key and protected backup
+   with operator approval. Never commit private key material or its passphrase.
 4. Confirm the final acceptance record and that temporary test credentials and
    fixtures have been restored or intentionally retained. Project-access policy
    administration is available to every organization through the dedicated
@@ -54,8 +57,8 @@ and [publishing artifacts](https://developer.hashicorp.com/terraform/cloud-docs/
 
 ## Local package verification
 
-Install GoReleaser **v2.20.2**, Go (the version in `go.mod` or later), Terraform
-**1.11+**, and Python 3. Run:
+Install GoReleaser **v2.20.2**, Go **1.27.4** (pinned in `go.mod`) or later,
+Terraform **1.11+**, and Python 3. Run:
 
 ```sh
 make check
@@ -86,14 +89,14 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
 ## Creating and publishing a version
 
 1. Add reviewed release notes at `docs/releases/vX.Y.Z.md` and update `CHANGELOG.md`.
-   Before tagging v0.1.0, finalize its changelog heading and remove preparation-only
+   Before tagging, finalize the version's changelog heading and remove preparation-only
    wording from the README, provider overview, coverage plan and release notes.
    Use a new version for every change to published assets; never replace a release.
 2. After release approval, tag the reviewed commit on main and push that tag:
 
    ```sh
-   git tag v0.1.0 <reviewed-main-commit>
-   git push origin v0.1.0
+   git tag v0.2.0 <reviewed-main-commit>
+   git push origin v0.2.0
    ```
 
 3. The tag workflow tests the revision, checks it belongs to main, builds the
@@ -121,7 +124,7 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
      required_providers {
        opper = {
          source  = "opper-ai/opper"
-         version = "0.1.0"
+         version = "0.2.0"
        }
      }
    }
@@ -132,5 +135,7 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
    result and any remaining limitations before reporting the release complete.
 
 Resource lifecycle acceptance is recorded in [live-acceptance.md](live-acceptance.md).
-Publication does not add support for invitations, managed membership, billing, or
-atomic Restricted project creation, and does not change plan or scope requirements.
+Publication does not add support for invitations, managed membership or billing,
+and does not change existing project policies or plan/scope requirements. v0.2.0
+adds opt-in atomic project creation and runtime-key allowlists; their documented
+lifecycle and authorization requirements still apply.

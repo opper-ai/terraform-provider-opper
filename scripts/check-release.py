@@ -87,6 +87,16 @@ def main():
         provider = schema["provider_schemas"]["registry.terraform.io/opper-ai/opper"]
         assert len(provider["resource_schemas"]) == 11
         assert len(provider["data_source_schemas"]) == 9
+        project = provider["resource_schemas"]["opper_project"]["block"]["attributes"]
+        initial = project.get("initial_access", {})
+        assert initial.get("optional"), "package lacks initial project access support"
+        assert {"mode", "role_keys", "user_uuids"} <= set(
+            initial.get("nested_type", {}).get("attributes", {})
+        ), "package has an incomplete initial access schema"
+        key = provider["resource_schemas"]["opper_api_key"]["block"]["attributes"]
+        allowed = key.get("allowed_ips", {})
+        assert allowed.get("optional") and allowed.get("computed"), "package lacks runtime key allowlists"
+        assert allowed.get("type") == ["set", "string"], "package has an invalid allowlist schema"
         installed = json.loads(terraform("version", "-json", cwd=root, env=env))
         assert installed["provider_selections"]["registry.terraform.io/opper-ai/opper"] == version
     print(f"Verified eight packages, manifest, checksums and Terraform installation ({version}).")
