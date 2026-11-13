@@ -69,6 +69,7 @@ func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed: true, MarkdownDescription: "Creation timestamp, when provided by Opper.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"initial_access": initialProjectAccessSchema(),
 		},
 	}
 }
@@ -86,12 +87,23 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 }
 
 func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data projectModel
+	var data projectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	p, err := r.client.CreateProject(ctx, data.Name.ValueString(), data.Description.ValueString())
+	var p client.Project
+	var err error
+	if data.InitialAccess.IsNull() {
+		p, err = r.client.CreateProject(ctx, data.Name.ValueString(), data.Description.ValueString())
+	} else {
+		access, inputErr := initialProjectAccessInput(ctx, data.InitialAccess)
+		if inputErr != nil {
+			resp.Diagnostics.AddAttributeError(path.Root("initial_access"), "Invalid initial project access", inputErr.Error())
+			return
+		}
+		p, err = r.client.CreateProjectWithAccess(ctx, data.Name.ValueString(), data.Description.ValueString(), access)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create project", err.Error()+" If the request may have reached Opper, check for the project and import its UUID before retrying. Project creation does not support idempotency keys.")
 		return
@@ -101,7 +113,7 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data projectModel
+	var data projectResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -120,10 +132,14 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data, previous projectModel
+	var data, previous projectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &previous)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := initialProjectAccessChange(ctx, data.InitialAccess, previous.InitialAccess, false); err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("initial_access"), "Initial project access is creation-only", err.Error())
 		return
 	}
 	// PATCH only changed fields. In particular, Opper's protected default
@@ -151,7 +167,7 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 }
 
 func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data projectModel
+	var data projectResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return

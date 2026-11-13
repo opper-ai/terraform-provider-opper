@@ -17,6 +17,8 @@ import (
 type projectTestAPI struct {
 	mu                               sync.Mutex
 	projects                         map[string]client.Project
+	initialAccess                    map[string]client.InitialProjectAccess
+	createFailure, createRequests    int
 	sequence                         int
 	creates, updates, deletes, reads int
 	getFailure, deleteFailure        int
@@ -27,7 +29,7 @@ type projectTestAPI struct {
 
 func newProjectTestAPI(t *testing.T) *projectTestAPI {
 	t.Helper()
-	api := &projectTestAPI{projects: make(map[string]client.Project)}
+	api := &projectTestAPI{projects: make(map[string]client.Project), initialAccess: make(map[string]client.InitialProjectAccess)}
 	api.server = httptest.NewServer(http.HandlerFunc(api.serveHTTP))
 	t.Cleanup(api.server.Close)
 	return api
@@ -53,13 +55,23 @@ func (api *projectTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": "project not found"})
 	}
 	switch {
-	case r.Method == http.MethodPost && r.URL.Path == path:
+	case r.Method == http.MethodPost && (r.URL.Path == path || r.URL.Path == path+"/with-access"):
+		api.createRequests++
+		if api.createFailure != 0 {
+			w.WriteHeader(api.createFailure)
+			return
+		}
 		var body struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
+			Name        string                       `json:"name"`
+			Description string                       `json:"description"`
+			Access      *client.InitialProjectAccess `json:"access"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
 			http.Error(w, "invalid create body", http.StatusBadRequest)
+			return
+		}
+		if (r.URL.Path == path+"/with-access") != (body.Access != nil) {
+			http.Error(w, "initial access requires the atomic endpoint", http.StatusBadRequest)
 			return
 		}
 		for _, p := range api.projects {
@@ -71,6 +83,10 @@ func (api *projectTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		api.sequence++
 		p := client.Project{UUID: fmt.Sprintf("11111111-1111-4111-8111-%012d", api.sequence), Name: body.Name, Description: body.Description, CreatedAt: "2026-11-03T09:00:00Z"}
 		api.projects[p.UUID] = p
+		api.initialAccess[p.UUID] = client.InitialProjectAccess{Mode: "organization", RoleKeys: []string{}, UserUUIDs: []string{}}
+		if body.Access != nil {
+			api.initialAccess[p.UUID] = *body.Access
+		}
 		api.creates++
 		writeProject(http.StatusCreated, p)
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, path+"/"):
@@ -139,6 +155,7 @@ func (api *projectTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		delete(api.projects, id)
+		delete(api.initialAccess, id)
 		api.deletes++
 		w.WriteHeader(http.StatusNoContent)
 	default:

@@ -1,5 +1,34 @@
 # Live acceptance
 
+## Atomic initial project access: local verification, 2026-11-13
+
+The unreleased `opper_project.initial_access` increment passed against the actual
+Management Surface, stored management-key authentication and a task-owned,
+migrated PostgreSQL database. This was a local cross-repository workflow, not
+production acceptance. Terraform 1.15.3 installed the task-built provider through
+an isolated filesystem mirror, without development overrides.
+
+One apply created an Enterprise custom role and a project with initial Restricted
+role and member grants; the role key became known during that apply. Exactly one
+`POST /management/v1/projects/with-access` created the project, with no legacy
+project-create fallback. No-op plans and an in-place metadata update preserved
+the policy. A separate real API policy edit remained unchanged by refresh and
+planning, confirming that the stored creation intent is not live policy ownership.
+
+Project UUID import recovered metadata without inventing creation history. An
+explicit `opper_project_access` import then adopted the current policy for a
+conditional update. Final destroy retained the policy resource's normal behavior,
+deleted the project before its custom role, retired the deleted-project role
+reference and left empty Terraform state. The backend recorded one transactional
+project-creation audit. Synthetic fixtures were cleaned up; no inference or
+production calls were made.
+
+Separate tests cover malformed and ambiguous REST/MCP intent, unsupported-server
+refusal, permission revocation and expiry after lock waits, atomic visibility,
+recipient/audit rollback, seed-change refusal and state-only history removal.
+The Management API/MCP endpoint must roll out before live acceptance and provider
+publication. No additional version was published by these checks.
+
 ## Organization model list: 2026-11-04
 
 `TestAccOrganizationModelListResource` passed against Jctest's public Management API in 2.30 seconds after [backend PR #5834](https://github.com/opper-ai/opper/pull/5834) merged as `904ddb691539711355446f19b802a9e2bb827dbc`. The deployed descendant image `1876ea4a8b725bd7699cef3af9519b079f00d9f8` contains that merge; its only additional change is the evroc CNPG infrastructure manifest. API and worker rollout jobs completed successfully in both EKS and evroc in [the production workflow](https://github.com/opper-ai/opper/actions/runs/41816442686).
