@@ -1,7 +1,7 @@
 # Terraform provider for Opper
 
 Manage Opper configuration through the [Management API](https://docs.opper.ai/control-plane/management-api).
-The first release includes projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper). Version **0.1.0 is being prepared**; no Terraform Registry release is published yet.
+The provider includes projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained in [opper-ai/terraform-provider-opper](https://github.com/opper-ai/terraform-provider-opper).
 
 The [coverage plan](docs/coverage.md) distinguishes supported configuration from deferred features. The APIs required by the implemented resources are deployed. Custom roles require Enterprise, and project-access policy writes require activation for the credential's organization. Member-role assignments manage existing memberships only; invitations, removals and ownership transfer remain outside provider scope.
 
@@ -35,7 +35,7 @@ The [`opper_organization_model_list` data source](docs/data-sources/organization
 
 Use Terraform **1.11 or later** to use the full provider surface, including write-only BYOK credentials. Recent live acceptance used Terraform 1.15.3.
 
-After v0.1.0 is published to the Registry, the configuration below can be installed with `terraform init`. Until then, use the [local development override](#develop-locally).
+The configuration below selects the v0.1.x provider series. Run `terraform init` to install the selected Registry version. To use a local build instead, follow the [development override instructions](#develop-locally).
 
 Create a management API key in the Opper platform and provide it through `OPPER_MANAGEMENT_API_KEY`. A runtime key cannot authenticate to the Management API. Managing projects requires `projects:read`, `projects:write` and `projects:delete`; a lookup needs only `projects:read`.
 
@@ -91,7 +91,7 @@ provider_installation {
 }
 ```
 
-Set `TF_CLI_CONFIG_FILE` to that configuration file. For a configuration containing only this provider, run `terraform plan` and `terraform apply` directly. Do not run `terraform init` to install this unpublished provider: the development override supplies its executable, while initialization would try to locate a Registry release. Terraform's development-override warning is expected.
+Set `TF_CLI_CONFIG_FILE` to that configuration file. For a configuration containing only this provider, run `terraform plan` and `terraform apply` directly. The development override supplies the local executable directly; `terraform init` does not install local builds. With only this provider in the configuration, initialization is unnecessary. Initialize any other required providers separately. Terraform's development-override warning is expected.
 
 ## Test
 

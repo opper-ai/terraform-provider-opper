@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — planned v0.1.0
+## v0.1.0
 
 Initial Terraform provider for the Opper Management API. See the [v0.1.0 release notes](docs/releases/v0.1.0.md) for installation, availability and lifecycle notes.
 
@@ -14,4 +14,4 @@ Initial Terraform provider for the Opper Management API. See the [v0.1.0 release
 
 The initial release includes 11 resources. Invitations, membership removal, ownership transfer, billing and other organization settings are outside its scope. Project creation followed by an access-policy update is not atomic Restricted creation. Runtime-key secrets are retained in Terraform state; protect the state backend.
 
-Local Terraform/API tests and the documented live acceptance workflows cover lifecycle behavior and failure handling. See [live acceptance](docs/live-acceptance.md) for the tested environments and limits. No Registry release has been published yet.
+Local Terraform/API tests and the documented live acceptance workflows cover lifecycle behavior and failure handling. See [live acceptance](docs/live-acceptance.md) for the tested environments and limits.
