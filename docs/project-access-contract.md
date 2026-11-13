@@ -1,6 +1,6 @@
 # Restricted project access for Terraform
 
-The conditional policy Management API and Management MCP shipped in [Opper PR #6119](https://github.com/opper-ai/opper/pull/6119) on 2026-11-11. Genuine organization management keys may use dedicated `project_access:read` and `project_access:write` scopes. Policy writes remain behind the default-off organization activation gate. Dashboard policy editing, atomic Restricted creation and activation belong to the separate project-permissions rollout.
+The conditional policy Management API and Management MCP shipped in [Opper PR #6119](https://github.com/opper-ai/opper/pull/6119) on 2026-11-11. Genuine organization management keys may use dedicated `project_access:read` and `project_access:write` scopes. Policy writes became generally available with [Opper PR #6174](https://github.com/opper-ai/opper/pull/6174), deployed to EKS and Evroc on 2026-11-13. No per-organization activation is required, and the rollout does not convert existing policies automatically. Native policy editing retains its built-in Owner/Admin requirement.
 
 ## Policy and API
 
@@ -25,13 +25,13 @@ Organization and project identity cannot change after adoption, and there is no 
 
 Destroy removes Terraform ownership and retains the remote policy. To reopen a project, apply `mode = "organization"` explicitly. A retained grant can block custom role deletion, so remove references in a reviewed policy update before retiring the role. Project deletion and grant cleanup also need an explicit contract. Today a project is soft-deleted and the role foreign key can retain the reference.
 
-For projects that must be Restricted from their first moment, add initial policy to project creation and persist it in the same transaction. Require `project_access:write` in addition to `projects:write` for this path. A separate Terraform project followed by a policy update would leave an organization-wide visibility window. Implement and validate atomic creation before recommending that workflow.
+Native project creation supports an initial Restricted policy atomically. This provider does not expose initial policy on project creation: it requires an existing project and a separate plan to read and review its access policy. A separate Terraform project followed by a policy update leaves an organization-wide visibility window and does not provide Restricted access from creation.
 
-## Remaining delivery gates
+## Verification and remaining scope
 
 Local real-Terraform lifecycle tests and the actual Management API/authentication/PostgreSQL workflow passed. See the [local verification record](live-acceptance.md#project-access-local-verification-2026-11-11).
 
-Bounded live existing-project Terraform acceptance passed in EKS on 2026-11-12. The [live record](live-acceptance.md#project-access-lifecycle-2026-11-12) distinguishes the tested provider behavior, reused native/local coverage and cleanup from broader regional activation.
+Bounded live existing-project Terraform acceptance passed in EKS on 2026-11-12. The [live record](live-acceptance.md#project-access-lifecycle-2026-11-12) distinguishes the tested provider behavior, reused native/local coverage and cleanup from the later general-availability rollout.
 
-1. Keep broader project-permissions activation and creation support in their separately reviewed rollout. Enforcement stays active whenever a Restricted policy exists.
+1. Keep atomic Restricted creation support in Terraform as a separate increment. Enforcement stays active whenever a Restricted policy exists.
 2. Keep Registry publication separate, and rerun the combined provider example before publication when its managed scope changes.

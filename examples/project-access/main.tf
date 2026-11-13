@@ -5,7 +5,7 @@ terraform {
 }
 
 # Supply OPPER_MANAGEMENT_API_KEY privately with project_access:read and
-# project_access:write. The organization must have policy writes enabled.
+# project_access:write. These scopes authorize policy administration.
 provider "opper" {}
 
 # Replace these UUIDs with an existing organization and project. Import first

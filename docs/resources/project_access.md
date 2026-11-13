@@ -5,7 +5,7 @@ description: "Manage the access policy of an existing project."
 
 # opper_project_access (Resource)
 
-Manages one existing project's complete access policy. Planning, refresh and import require `project_access:read`. Policy changes also require `project_access:write` and server-side policy-write activation for the organization. Ordinary `projects:*` scopes do not grant policy authority. Writes remain disabled by default.
+Manages one existing project's complete access policy. Planning, refresh and import require `project_access:read`. Policy changes also require `project_access:write`. Ordinary `projects:*` scopes do not grant policy authority.
 
 ```hcl
 resource "opper_project_access" "reporting" {
@@ -67,4 +67,4 @@ Revoking access does not recall data, download URLs or shared secrets previously
 
 ## Availability and acceptance
 
-The policy Management API and Management MCP shipped in [Opper PR #6119](https://github.com/opper-ai/opper/pull/6119). Production policy writes remain behind the default-off activation gate. Bounded existing-project Terraform acceptance passed in EKS on 2026-11-12, including stale-plan refusal, retain-on-destroy and explicit Organization restoration. See the [acceptance record](../live-acceptance.md#project-access-lifecycle-2026-11-12) for the tested scope and cleanup. Broader activation, project-creation support and Registry publication remain separate; this resource's availability is not evidence that an organization has been activated.
+The policy Management API and Management MCP shipped in [Opper PR #6119](https://github.com/opper-ai/opper/pull/6119). Policy writes became generally available with [backend PR #6174](https://github.com/opper-ai/opper/pull/6174), deployed to EKS and Evroc on 2026-11-13. The rollout does not convert existing policies automatically; native policy editing retains its built-in Owner/Admin requirement. Bounded existing-project Terraform acceptance passed in EKS on 2026-11-12, including stale-plan refusal, retain-on-destroy and explicit Organization restoration. See the [acceptance record](../live-acceptance.md#project-access-lifecycle-2026-11-12) for the tested scope and cleanup. Native atomic Restricted creation is available separately. This Terraform resource manages existing projects only; plan again after project creation before adopting its policy. Registry publication remains separate.
