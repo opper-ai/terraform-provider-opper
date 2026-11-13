@@ -19,8 +19,9 @@ fmt:
 	gofmt -w main.go internal
 	terraform fmt -recursive examples
 
-# Unsigned local packages only; never uploads or publishes a release.
+# Local checks only; no external publishing or live credentials.
 release-check:
 	$(GORELEASER) check
+	python3 scripts/check-release-notes.py "$(GORELEASER)"
 	$(GORELEASER) release --snapshot --clean --skip=sign
 	python3 scripts/check-release.py dist

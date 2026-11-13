@@ -34,7 +34,7 @@ jobs:
           set -euo pipefail
           test -n "$GPG_PRIVATE_KEY"
           test -n "$PASSPHRASE"
-          test -f "docs/releases/${GITHUB_REF_NAME}.md"
+          test -s "docs/releases/${GITHUB_REF_NAME}.md"
           git merge-base --is-ancestor HEAD origin/main
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:

@@ -5,7 +5,7 @@ description: "Read the organization's advertised model-list preference."
 
 # opper_organization_model_list (Data Source)
 
-Reads the current management credential's organization UUID and compat model-list preference. Requires `controls:read`. The Management API is deployed and [live acceptance](../live-acceptance.md#organization-model-list-2026-11-04) passed. It performs no mutation or inference.
+Reads the current management credential's organization UUID and compat model-list preference. Requires `controls:read`. The Management API is deployed and [live acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/v0.1.0/docs/live-acceptance.md#organization-model-list-2026-11-04) passed. It performs no mutation or inference.
 
 ```hcl
 data "opper_organization_model_list" "current" {}

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Preserve reviewed release notes in draft builds and verify the release path locally.
+- Fix GitHub-only documentation links when viewed through the Terraform Registry or GitHub releases.
+
 ## v0.1.0
 
 Initial Terraform provider for the Opper Management API. See the [v0.1.0 release notes](docs/releases/v0.1.0.md) for installation, availability and lifecycle notes.

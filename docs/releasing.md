@@ -62,12 +62,21 @@ make check
 make release-check
 ```
 
-`release-check` validates the configuration, builds eight unsigned snapshot ZIPs
+`release-check` validates the configuration and exercises a real, non-snapshot
+GoReleaser release against a loopback GitHub fixture, using a tiny Go program and
+dummy credentials. It verifies that the supplied notes reach the draft unchanged,
+the release remains a draft, and the expected unsigned assets are uploaded only
+to that local fixture. Snapshot mode skips release-note loading, so the snapshot
+check alone cannot verify this behavior. Do not disable `changelog`: that also
+discards the reviewed file passed with `--release-notes`.
+
+It then builds eight unsigned snapshot ZIPs
 in `dist/`, verifies their contents, checksums and protocol 6 manifest, and installs
 the host package with `terraform init` through an isolated filesystem mirror.
 It loads the actual provider schema and checks all 11 resources and 9 data sources.
-It does not use development overrides, connect to Opper, or upload anything. This
-checks packaging and installation, not Registry signing or resource lifecycles.
+It does not use development overrides, connect to Opper, or upload to GitHub or
+the Registry. This checks packaging and installation, not Registry signing or
+resource lifecycles.
 
 CI runs both checks on pull requests and main, using Terraform 1.15.3 for the
 lifecycle suite and 1.11.4 for the packaged installation check. The release workflow runs the same

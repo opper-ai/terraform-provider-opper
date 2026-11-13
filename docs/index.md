@@ -7,7 +7,7 @@ description: "Manage Opper configuration through the Management API."
 
 The Opper provider manages organization configuration through the [Management API](https://docs.opper.ai/control-plane/management-api). The implementation supports projects and access policies, project webhooks and runtime keys, organization model-list preferences, rules, dynamic-route drafts and deployments, BYOK custom models, custom roles and existing member-role assignments. Source is maintained on [GitHub](https://github.com/opper-ai/terraform-provider-opper).
 
-Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Use the configuration below and run `terraform init` to install the selected Registry version. For local builds, follow the [development override instructions](../README.md#develop-locally).
+Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Use the configuration below and run `terraform init` to install the selected Registry version. For local builds, follow the [development override instructions](https://github.com/opper-ai/terraform-provider-opper/blob/main/README.md#develop-locally).
 
 ```hcl
 terraform {
@@ -55,4 +55,4 @@ The APIs required by these resources are deployed. Project-access policy writes 
 
 For multiple organizations, use provider aliases with separate management credentials. `base_url` changes the API origin, not the selected organization.
 
-See the [project resource](resources/project.md), [project access policies](resources/project_access.md), [project webhooks](resources/project_webhook.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [live deployments](resources/dynamic_route_deployment.md), [project lookup](data-sources/project.md), [member lookup](data-sources/member.md), [member list](data-sources/members.md), [local development instructions](../README.md#develop-locally) and [coverage plan](coverage.md).
+See the [project resource](resources/project.md), [project access policies](resources/project_access.md), [project webhooks](resources/project_webhook.md), [runtime keys](resources/api_key.md), [rules](resources/rule.md), [dynamic-route drafts](resources/dynamic_route.md), [live deployments](resources/dynamic_route_deployment.md), [project lookup](data-sources/project.md), [member lookup](data-sources/member.md), [member list](data-sources/members.md), [local development instructions](https://github.com/opper-ai/terraform-provider-opper/blob/main/README.md#develop-locally) and [coverage plan](https://github.com/opper-ai/terraform-provider-opper/blob/main/docs/coverage.md).
