@@ -74,11 +74,11 @@ Omitting `allowed_ips`, or setting it to null, preserves an existing or imported
 
 The provider trims whitespace, masks CIDR host bits, deduplicates equivalent entries, and normalizes host prefixes, IPv4-mapped addresses and IPv6 spellings. Configured spellings remain in state when semantically equivalent to the server list, avoiding formatting-only drift. Import uses canonical server values. Refresh detects real list changes; an explicitly configured list reconciles them on apply.
 
-Before creating a restricted key, the provider verifies advertised OpenAPI support. An unsupported server is refused before the creation POST. Responses must confirm the requested restriction; a refusal or unconfirmed response is an error. A failed allowlist update does not trigger replacement or an unrestricted fallback. Inspect the remote key after an uncertain creation outcome before retrying.
+Before creating a restricted key, the provider verifies advertised OpenAPI support; unsupported discovery is refused before the creation POST. The response must then confirm the requested restriction. Discovery cannot guarantee that another request reaches the same backend version during a mixed rollout. An incompatible response can therefore identify a minted key without confirming its policy: its ID and any one-time secret are retained in state with an error. Inspect the remote key before use or recovery. The provider never automatically retries, revokes or replaces that key to repair the response. A failed allowlist update also retains the existing key instead of falling back to replacement.
 
 Runtime authentication caches can delay enforcement of allowlist changes by up to one minute. An accepted update is not a promise of immediate enforcement on every request.
 
-Live allowlist acceptance has not run. The baseline runtime-key acceptance record predates this feature and does not verify allowlist creation, updates or runtime enforcement.
+[Live allowlist acceptance](https://github.com/opper-ai/terraform-provider-opper/blob/main/docs/live-acceptance.md#runtime-key-ip-allowlist-2026-11-13) passed on `api.opper.ai` on 2026-11-13, including canonical creation, in-place updates, clear/re-enable runtime checks, import, guarded rotation and cleanup. The baseline runtime-key acceptance predates this feature; see the new record for its coverage and limits.
 
 ## Replacement and rotation
 

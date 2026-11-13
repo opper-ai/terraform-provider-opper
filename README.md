@@ -135,7 +135,7 @@ Custom-model, custom-role and member-role live workflows also passed. Bounded pr
 
 Do not commit credentials, Terraform state or plan files. Supply the management key through the environment rather than placing it in HCL.
 
-The unreleased [`opper_api_key.allowed_ips`](docs/resources/api_key.md#ip-allowlist) attribute manages public source IPs/CIDRs without rotating the key. Omission preserves an existing key's observed list; `[]` clears it. Every restricted-key replacement requires an explicit list, including manual `-replace`, taint and recovery. Runtime enforcement can take up to one minute, and live allowlist acceptance has not run. This attribute is not included in v0.1.0.
+The unreleased [`opper_api_key.allowed_ips`](docs/resources/api_key.md#ip-allowlist) attribute manages public source IPs/CIDRs without rotating the key. Omission preserves an existing key's observed list; `[]` clears it. Every restricted-key replacement requires an explicit list, including manual `-replace`, taint and recovery. Runtime enforcement can take up to one minute. [Live allowlist acceptance](docs/live-acceptance.md#runtime-key-ip-allowlist-2026-11-13) passed on `api.opper.ai`, including unbilled runtime allow/deny checks and cleanup. This attribute is not included in v0.1.0.
 
 Runtime-key secrets are returned once and retained in Terraform state with the sensitive flag. Import recovers key metadata only. Protect the state backend and review the [key lifecycle](docs/resources/api_key.md) before rotation.
 
