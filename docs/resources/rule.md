@@ -80,7 +80,9 @@ Import an existing rule by UUID:
 terraform import opper_rule.retention 01234567-89ab-4cde-8012-3456789abcde
 ```
 
-The API has no rule-by-ID GET endpoint. Refresh and import list the organization's rules and select the exact UUID. Import recovers the canonical server configuration; it cannot reconstruct the original sparse JSON input. Review the resulting plan and align `config_json` with the desired policy. A successful list that omits this UUID marks the resource missing. Authorization failures, list endpoint 404s, malformed responses and other API failures preserve state.
+The API has no rule-by-ID GET endpoint. Refresh and import list the organization's rules and select the exact UUID. Import recovers the complete server configuration, including defaults; it cannot reconstruct the original sparse JSON input. The imported desired JSON uses compact encoding and sorted object keys, so matching `jsonencode({...})` configuration does not need to preserve the API's key order or whitespace. Array order, string values and numeric precision are preserved. Number spellings are retained rather than rounded or rewritten; a different numeric representation can still produce an update, including an API write. `effective_config_json` retains the observed API representation.
+
+This normalization applies when the provider first populates desired JSON or observes a real remote configuration change. Existing desired JSON remains intact while the observed policy is unchanged. Formatting differences from earlier imports can still need one state-only update when adopting `jsonencode`. Normalization does not remove server defaults or ignore policy changes. Review the resulting plan and align `config_json` with the desired policy. A successful list that omits this UUID marks the resource missing. Authorization failures, list endpoint 404s, malformed responses and other API failures preserve state.
 
 ## Create and recovery
 

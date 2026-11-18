@@ -22,6 +22,7 @@ type ruleTestAPI struct {
 	createFailureAfterWrite                   bool
 	concurrentConfigOnPatch                   string
 	patches                                   []map[string]json.RawMessage
+	requests                                  []string
 }
 
 func newRuleTestAPI(t *testing.T) *ruleTestAPI {
@@ -34,6 +35,7 @@ func newRuleTestAPI(t *testing.T) *ruleTestAPI {
 func (api *ruleTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	api.mu.Lock()
 	defer api.mu.Unlock()
+	api.requests = append(api.requests, r.Method+" "+r.URL.Path)
 	w.Header().Set("Content-Type", "application/json")
 	if r.Header.Get("Authorization") != "Bearer op-mak-local-test" {
 		http.Error(w, "unauthenticated", 401)

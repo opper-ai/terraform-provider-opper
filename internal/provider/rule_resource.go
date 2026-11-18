@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -236,7 +237,7 @@ func (m *ruleModel) setRule(rule client.Rule, replaceDesired bool) {
 	m.Scope = ruleScopeValue(rule.Scope)
 	m.EffectiveConfigJSON = jsontypes.NewNormalizedValue(string(rule.Config))
 	if replaceDesired || m.ConfigJSON.IsNull() || m.ConfigJSON.IsUnknown() {
-		m.ConfigJSON = m.EffectiveConfigJSON
+		m.ConfigJSON = canonicalRuleConfig(rule.Config)
 	}
 	m.CreatedAt = types.StringNull()
 	if rule.CreatedAt != "" {
@@ -246,6 +247,26 @@ func (m *ruleModel) setRule(rule client.Rule, replaceDesired bool) {
 	if rule.UpdatedAt != "" {
 		m.UpdatedAt = types.StringValue(rule.UpdatedAt)
 	}
+}
+
+// An imported rule has no practitioner-authored JSON to preserve. Stable object
+// ordering and compact encoding let jsonencode match that initial desired state
+// even when the API returns a different representation. Keep the effective API
+// snapshot separate, and never round policy numbers through float64.
+func canonicalRuleConfig(raw json.RawMessage) jsontypes.Normalized {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		// Client response validation normally rules this out. Preserve the original
+		// value rather than inventing a policy if an invalid value reaches here.
+		return jsontypes.NewNormalizedValue(string(raw))
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return jsontypes.NewNormalizedValue(string(raw))
+	}
+	return jsontypes.NewNormalizedValue(string(canonical))
 }
 
 func sameRuleJSON(ctx context.Context, a, b jsontypes.Normalized) bool {
