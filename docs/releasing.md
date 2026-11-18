@@ -1,6 +1,6 @@
 # Releasing the provider
 
-The examples below use **v0.2.0**. Preparing or merging release changes does not
+The examples below use **v0.2.1**. Preparing or merging release changes does not
 publish a version or change project policies. Tagging creates a draft for review;
 publishing that draft remains a separate operator action.
 
@@ -95,8 +95,8 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
 2. After release approval, tag the reviewed commit on main and push that tag:
 
    ```sh
-   git tag v0.2.0 <reviewed-main-commit>
-   git push origin v0.2.0
+   git tag v0.2.1 <reviewed-main-commit>
+   git push origin v0.2.1
    ```
 
 3. The tag workflow tests the revision, checks it belongs to main, builds the
@@ -104,8 +104,11 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
    the matching release notes. A failed run is not a published release; inspect
    the run and draft before retrying.
 4. Download the draft assets. Verify the checksum signature against the approved
-   public key (`gpg --verify *_SHA256SUMS.sig *_SHA256SUMS`), then verify each asset
-   checksum. Review the notes and version, then publish the draft explicitly.
+   full public-key fingerprint (`gpg --verify *_SHA256SUMS.sig *_SHA256SUMS`), then
+   verify each asset checksum. Inspect `go version -m -json` for every packaged
+   binary: its VCS revision must equal the reviewed tagged main commit, its tree
+   must be clean, and GOOS/GOARCH, CGO-disabled and ARMv6 settings must match the
+   advertised package. Review the notes and version, then publish the draft explicitly.
 5. For the first release, sign in to HCP Terraform, select the verified Opper
    organization and **Registry > Public namespaces > opper-ai**, then choose
    **Publish > Provider**. Select `terraform-provider-opper` and an appropriate
@@ -124,7 +127,7 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
      required_providers {
        opper = {
          source  = "opper-ai/opper"
-         version = "0.2.0"
+         version = "0.2.1"
        }
      }
    }
