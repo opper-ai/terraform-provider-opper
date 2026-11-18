@@ -35,7 +35,9 @@ The [`opper_organization_model_list` data source](docs/data-sources/organization
 
 ## Install and configure
 
-The v0.2.0 release notes cover [atomic project creation, runtime-key allowlists and upgrade considerations](docs/releases/v0.2.0.md).
+The [v0.2.1 release notes](docs/releases/v0.2.1.md) cover normalized rule imports
+and patch upgrade considerations. The [v0.2.0 notes](docs/releases/v0.2.0.md)
+cover atomic project creation and runtime-key allowlists.
 
 Use Terraform **1.11 or later** to use the full provider surface, including write-only BYOK credentials. Recent live acceptance used Terraform 1.15.3.
 

@@ -9,6 +9,11 @@ The Opper provider manages organization configuration through the [Management AP
 
 Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Use the configuration below and run `terraform init` to install the selected Registry version. For local builds, follow the [development override instructions](https://github.com/opper-ai/terraform-provider-opper/blob/main/README.md#develop-locally).
 
+v0.2.1 fixes rule import JSON formatting while preserving existing desired state
+when the remote policy is unchanged.
+See the [patch release notes](https://github.com/opper-ai/terraform-provider-opper/blob/v0.2.1/docs/releases/v0.2.1.md)
+for upgrade behavior and verification limits.
+
 ```hcl
 terraform {
   required_version = ">= 1.11"

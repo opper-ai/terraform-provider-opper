@@ -2,7 +2,7 @@
 
 The target is declarative management of Opper's customer-facing configuration. The provider calls the public Management API directly. Management MCP derives its tools from those same REST operations; its catalog is a useful coverage reference, while Terraform resources need persistent identity, refresh, import and predictable reconciliation.
 
-v0.2.0 includes 11 resources and nine data sources covering the configuration listed below. Source and acceptance records are maintained in the [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). The required backend APIs are deployed. v0.2.0 adds `opper_project.initial_access` and `opper_api_key.allowed_ips` to existing resources. Deferred coverage is listed separately from the supported resources.
+v0.2.1 includes 11 resources and nine data sources covering the configuration listed below. Source and acceptance records are maintained in the [GitHub repository](https://github.com/opper-ai/terraform-provider-opper). The required backend APIs are deployed. v0.2.1 fixes rule import JSON formatting; v0.2.0 added `opper_project.initial_access` and `opper_api_key.allowed_ips` to existing resources. Deferred coverage is listed separately from the supported resources.
 
 | Area | Current public Management API | Terraform scope and sequence |
 |---|---|---|
@@ -78,7 +78,7 @@ Project-access local and bounded live Terraform acceptance are recorded in the [
 
 ## Release boundary
 
-v0.2.0 packages the implemented resources and data sources. Installation does not change any project policy. Invitations and membership ownership need a defined lifecycle before writable resources are added. Other organization settings and billing need additional public management APIs. Usage is a possible read-only addition, while runtime calls, traces and generated content remain outside declarative management. Release packaging and publication are documented in the [release guide](releasing.md).
+The provider packages the implemented resources and data sources. Installation does not change any project policy. Invitations and membership ownership need a defined lifecycle before writable resources are added. Other organization settings and billing need additional public management APIs. Usage is a possible read-only addition, while runtime calls, traces and generated content remain outside declarative management. Release packaging and publication are documented in the [release guide](releasing.md).
 
 ## Owning references
 

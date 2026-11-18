@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.2.1
 
-- Normalize newly imported rule JSON object ordering and whitespace so matching `jsonencode` configuration imports without a formatting-only update. Preserve existing desired JSON, the effective API snapshot, array ordering and numeric precision.
+See the [v0.2.1 release notes](docs/releases/v0.2.1.md) for upgrade guidance and verification limits.
+
+- Normalize newly imported rule JSON object ordering and whitespace so matching `jsonencode` configuration imports without a formatting-only update. Preserve existing desired JSON while the remote policy is unchanged, the effective API snapshot, array ordering and numeric precision.
 
 ## v0.2.0
 
