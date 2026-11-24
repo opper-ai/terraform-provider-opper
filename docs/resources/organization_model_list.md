@@ -16,15 +16,28 @@ resource "opper_organization_model_list" "models" {
 }
 ```
 
+To list only the organization's dynamic routes:
+
+```hcl
+resource "opper_organization_model_list" "routes_only" {
+  organization_uuid                = "01234567-89ab-4cde-8012-3456789abcde"
+  compat_model_list                = "none"
+  compat_model_list_dynamic_routes = true
+}
+```
+
 ## Schema
 
 | Attribute | Type | Behavior | Description |
 |---|---|---|---|
 | `organization_uuid` | String | Required | Canonical lowercase organization UUID. The provider verifies it matches the management credential's organization before writing. Changing it replaces the Terraform resource, not the organization. |
-| `compat_model_list` | String | Required | `all`, `simplified` or `recommended`. |
+| `compat_model_list` | String | Required | `all`, `simplified`, `recommended` or `none`. With `none`, only the organization's dynamic routes are listed. |
+| `compat_model_list_dynamic_routes` | Bool | Optional, computed | Whether the organization's dynamic routes are listed alongside the models `compat_model_list` chooses. Opper defaults it to `true`. When omitted, the provider never sends it: the current value is kept and reported, and outside changes to it are not reverted. Must be `true` when `compat_model_list` is `none`. |
 | `id` | String | Read-only | Organization UUID, also used for import. |
 
-Creation starts managing this existing organization preference and sets the explicit desired value. Use one resource per organization and separate provider aliases for different organizations. A credential/UUID mismatch fails; it never adopts a different organization. An unchanged value causes no PUT.
+Creation starts managing this existing organization preference and sets the explicit desired value. Use one resource per organization and separate provider aliases for different organizations. A credential/UUID mismatch fails; it never adopts a different organization. An unchanged value causes no PUT. A PUT sends `compat_model_list` and, only when configured, `compat_model_list_dynamic_routes`, in one request.
+
+`compat_model_list = "none"` with `compat_model_list_dynamic_routes = false` fails at plan time: it would list no models at all, and Opper refuses it. Setting `none` while the attribute is omitted and the organization has its dynamic routes off also fails, before any write; set `compat_model_list_dynamic_routes = true` in the same configuration.
 
 ## Import and drift
 
@@ -34,7 +47,7 @@ terraform import opper_organization_model_list.models 01234567-89ab-4cde-8012-34
 
 Import reads the setting and verifies the credential's organization UUID. Review the next plan to align configuration with the existing value. Refresh detects outside edits. Authentication failures, missing/deleted organizations, and other API errors preserve state; this resource never creates or recreates an organization.
 
-The API serializes writes but provides no compare-and-swap contract. Coordinate other writers of this preference. If a PUT result is uncertain, the provider makes one pure GET: it accepts the observed desired value only for the same organization, and never retries the mutation automatically. An unresolved result requires inspection and, if necessary, import to reconcile state.
+The API serializes writes but provides no compare-and-swap contract. Coordinate other writers of this preference. If a PUT result is uncertain, the provider makes one pure GET: it accepts the observed desired values only for the same organization, and never retries the mutation automatically. An unresolved result requires inspection and, if necessary, import to reconcile state.
 
 ## Destroy
 

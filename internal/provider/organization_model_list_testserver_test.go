@@ -15,6 +15,8 @@ type organizationModelListTestAPI struct {
 	mu                     sync.Mutex
 	server                 *httptest.Server
 	uuid, value            string
+	routes                 bool
+	putBodies              []map[string]any
 	reads, puts            int
 	getFailure, putFailure int
 	putResponse            string
@@ -23,7 +25,7 @@ type organizationModelListTestAPI struct {
 
 func newOrganizationModelListTestAPI(t *testing.T) *organizationModelListTestAPI {
 	t.Helper()
-	api := &organizationModelListTestAPI{uuid: organizationModelListTestUUID, value: "recommended"}
+	api := &organizationModelListTestAPI{uuid: organizationModelListTestUUID, value: "recommended", routes: true}
 	api.server = httptest.NewServer(http.HandlerFunc(api.serveHTTP))
 	t.Cleanup(api.server.Close)
 	t.Cleanup(func() {
@@ -66,13 +68,46 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			fail(api.putFailure)
 			return
 		}
-		var body map[string]string
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body) != 1 || (body["compat_model_list"] != "all" && body["compat_model_list"] != "simplified" && body["compat_model_list"] != "recommended") {
+		// Mirror the API: compat_model_list, compat_model_list_dynamic_routes or
+		// both, nothing else, and never a result that lists nothing.
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body) == 0 {
 			api.unexpected = append(api.unexpected, "invalid PUT body")
 			fail(400)
 			return
 		}
-		api.value = body["compat_model_list"]
+		api.putBodies = append(api.putBodies, body)
+		value, routes := api.value, api.routes
+		for key, raw := range body {
+			switch key {
+			case "compat_model_list":
+				v, ok := raw.(string)
+				if !ok || (v != "all" && v != "simplified" && v != "recommended" && v != "none") {
+					api.unexpected = append(api.unexpected, "invalid compat_model_list")
+					fail(400)
+					return
+				}
+				value = v
+			case "compat_model_list_dynamic_routes":
+				v, ok := raw.(bool)
+				if !ok {
+					api.unexpected = append(api.unexpected, "invalid compat_model_list_dynamic_routes")
+					fail(400)
+					return
+				}
+				routes = v
+			default:
+				api.unexpected = append(api.unexpected, "unknown PUT field "+key)
+				fail(400)
+				return
+			}
+		}
+		if value == "none" && !routes {
+			api.unexpected = append(api.unexpected, "PUT would list nothing")
+			fail(400)
+			return
+		}
+		api.value, api.routes = value, routes
 		switch api.putResponse {
 		case "malformed_saved":
 			_, _ = w.Write([]byte(`{"meta":{},"data":`))
@@ -87,5 +122,5 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			responseUUID = organizationModelListOtherUUID
 		}
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": map[string]string{"organization_uuid": responseUUID, "compat_model_list": api.value}})
+	_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": map[string]any{"organization_uuid": responseUUID, "compat_model_list": api.value, "compat_model_list_dynamic_routes": api.routes}})
 }
