@@ -159,7 +159,7 @@ func TestOrganizationModelListImportValidation(t *testing.T) {
 }
 func TestOrganizationModelListValidation(t *testing.T) {
 	requireTerraform(t)
-	for _, tc := range []struct{ uuid, value string }{{"not-a-uuid", "all"}, {"AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA", "all"}, {organizationModelListTestUUID, "ALL"}, {organizationModelListTestUUID, ""}, {organizationModelListTestUUID, "unknown"}} {
+	for _, tc := range []struct{ uuid, value string }{{"not-a-uuid", "all"}, {"AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA", "all"}, {organizationModelListTestUUID, "ALL"}, {organizationModelListTestUUID, ""}, {organizationModelListTestUUID, "unknown"}, {organizationModelListTestUUID, "NONE"}} {
 		t.Run(tc.uuid+tc.value, func(t *testing.T) {
 			api := newOrganizationModelListTestAPI(t)
 			resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, Steps: []resource.TestStep{{Config: organizationModelListTestConfig(api.server.URL, tc.uuid, tc.value), ExpectError: regexp.MustCompile(`(?i)UUID|compat_model_list|one of`)}}})
@@ -230,7 +230,7 @@ func TestAccOrganizationModelListResource(t *testing.T) {
 		if current == original {
 			return
 		}
-		restored, err := api.SetOrganizationModelList(ctx, original.CompatModelList)
+		restored, err := api.SetOrganizationModelList(ctx, client.OrganizationModelListChange{CompatModelList: &original.CompatModelList, DynamicRoutes: &original.DynamicRoutes})
 		if err != nil {
 			t.Errorf("restore original model-list preference: %v", err)
 			return
@@ -266,4 +266,158 @@ resource "opper_organization_model_list" "test" {
 		{Config: config("simplified"), Check: resource.TestCheckResourceAttr("opper_organization_model_list.test", "compat_model_list", "simplified")},
 		{ResourceName: "opper_organization_model_list.test", ImportState: true, ImportStateVerify: true},
 	}})
+}
+
+func organizationModelListRoutesTestConfig(baseURL, value, routes string) string {
+	routesLine := ""
+	if routes != "" {
+		routesLine = "\n compat_model_list_dynamic_routes = " + routes
+	}
+	return fmt.Sprintf(`
+provider "opper" {
+ management_api_key = "op-mak-local-test"
+ base_url = %q
+}
+resource "opper_organization_model_list" "test" {
+ organization_uuid = %q
+ compat_model_list = %q%s
+}
+data "opper_organization_model_list" "current" {}
+`, baseURL, organizationModelListTestUUID, value, routesLine)
+}
+
+func checkOrganizationModelListRoutes(api *organizationModelListTestAPI, want bool) resource.TestCheckFunc {
+	return func(*terraform.State) error {
+		api.mu.Lock()
+		defer api.mu.Unlock()
+		if api.routes != want {
+			return fmt.Errorf("expected dynamic routes %v, got %v", want, api.routes)
+		}
+		return nil
+	}
+}
+
+// checkOrganizationModelListLastPut checks the field names of the latest PUT
+// body: an omitted dynamic-routes setting must never be sent.
+func checkOrganizationModelListLastPut(api *organizationModelListTestAPI, fields ...string) resource.TestCheckFunc {
+	return func(*terraform.State) error {
+		api.mu.Lock()
+		defer api.mu.Unlock()
+		if len(api.putBodies) == 0 {
+			return fmt.Errorf("no PUT was sent")
+		}
+		body := api.putBodies[len(api.putBodies)-1]
+		if len(body) != len(fields) {
+			return fmt.Errorf("PUT body %v, want fields %v", body, fields)
+		}
+		for _, field := range fields {
+			if _, ok := body[field]; !ok {
+				return fmt.Errorf("PUT body %v lacks %s", body, field)
+			}
+		}
+		return nil
+	}
+}
+
+// An organization set to none on the platform must stay readable, plannable
+// and importable.
+func TestOrganizationModelListReadsNone(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	api.value = "none"
+	const address = "opper_organization_model_list.test"
+	config := organizationModelListRoutesTestConfig(api.server.URL, "none", "")
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 0, "none"), Steps: []resource.TestStep{
+		{Config: config, Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list", "none"),
+			resource.TestCheckResourceAttr(address, "compat_model_list_dynamic_routes", "true"),
+			resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list", "none"),
+			resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_dynamic_routes", "true"),
+			checkOrganizationModelListWrites(api, 0, "none"),
+		)},
+		{Config: config, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+		{ResourceName: address, ImportState: true, ImportStateVerify: true},
+	}})
+}
+
+// A resource managing another value converges an organization that was
+// switched to none outside Terraform.
+func TestOrganizationModelListCorrectsDriftFromNone(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	const address = "opper_organization_model_list.test"
+	config := organizationModelListRoutesTestConfig(api.server.URL, "all", "")
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 2, "all"), Steps: []resource.TestStep{
+		{Config: config, Check: checkOrganizationModelListWrites(api, 1, "all")},
+		{PreConfig: func() { api.mu.Lock(); api.value = "none"; api.mu.Unlock() }, Config: config, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(address, plancheck.ResourceActionUpdate)}}, Check: resource.ComposeTestCheckFunc(checkOrganizationModelListWrites(api, 2, "all"), checkOrganizationModelListLastPut(api, "compat_model_list"))},
+	}})
+}
+
+func TestOrganizationModelListDynamicRoutesLifecycle(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	const address = "opper_organization_model_list.test"
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 6, "all"), Steps: []resource.TestStep{
+		// Omitted: adopts and reports the current value, sends nothing for it.
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "all", ""), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_dynamic_routes", "true"),
+			checkOrganizationModelListWrites(api, 1, "all"),
+			checkOrganizationModelListLastPut(api, "compat_model_list"),
+		)},
+		// Setting only the routes is an in-place update with both fields sent.
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "all", "false"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(address, plancheck.ResourceActionUpdate)}}, Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_dynamic_routes", "false"),
+			checkOrganizationModelListRoutes(api, false),
+			checkOrganizationModelListWrites(api, 2, "all"),
+			checkOrganizationModelListLastPut(api, "compat_model_list", "compat_model_list_dynamic_routes"),
+		)},
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "all", "false"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_dynamic_routes", "false")},
+		{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		// Drift on a configured value is corrected.
+		{PreConfig: func() { api.mu.Lock(); api.routes = true; api.mu.Unlock() }, Config: organizationModelListRoutesTestConfig(api.server.URL, "all", "false"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(address, plancheck.ResourceActionUpdate)}}, Check: resource.ComposeTestCheckFunc(checkOrganizationModelListRoutes(api, false), checkOrganizationModelListWrites(api, 3, "all"))},
+		// none and routes on in one PUT, from a state with the routes off.
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "none", "true"), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list", "none"),
+			checkOrganizationModelListRoutes(api, true),
+			checkOrganizationModelListWrites(api, 4, "none"),
+			checkOrganizationModelListLastPut(api, "compat_model_list", "compat_model_list_dynamic_routes"),
+		)},
+		// Removing the attribute stops managing it: no plan, no PUT, and an
+		// outside change to it is reported but not reverted.
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "none", ""), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: checkOrganizationModelListWrites(api, 4, "none")},
+		{PreConfig: func() { api.mu.Lock(); api.value, api.routes = "all", false; api.mu.Unlock() }, Config: organizationModelListRoutesTestConfig(api.server.URL, "all", ""), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr(address, "compat_model_list_dynamic_routes", "false"), checkOrganizationModelListWrites(api, 4, "all"))},
+		// Changing only the list keeps the unmanaged routes value as it is.
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "simplified", ""), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_dynamic_routes", "false"),
+			checkOrganizationModelListRoutes(api, false),
+			checkOrganizationModelListWrites(api, 5, "simplified"),
+			checkOrganizationModelListLastPut(api, "compat_model_list"),
+		)},
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "all", ""), Check: checkOrganizationModelListWrites(api, 6, "all")},
+	}})
+}
+
+func TestOrganizationModelListRejectsNoneWithoutRoutesAtPlan(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, Steps: []resource.TestStep{
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "none", "false"), PlanOnly: true, ExpectError: regexp.MustCompile(`(?s)Model list would be empty.*compat_model_list_dynamic_routes\s+must\s+be\s+true`)},
+	}})
+	if err := checkOrganizationModelListWrites(api, 0, "recommended")(nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// With the routes omitted, none cannot be applied while the organization has
+// them off; the provider explains this instead of sending a refused PUT.
+func TestOrganizationModelListNoneWhileRoutesOffExplains(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	api.routes = false
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, Steps: []resource.TestStep{
+		{Config: organizationModelListRoutesTestConfig(api.server.URL, "none", ""), ExpectError: regexp.MustCompile(`(?s)currently off.*compat_model_list_dynamic_routes\s+=\s+true`)},
+	}})
+	if err := checkOrganizationModelListWrites(api, 0, "recommended")(nil); err != nil {
+		t.Fatal(err)
+	}
 }

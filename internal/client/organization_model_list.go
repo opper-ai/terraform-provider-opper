@@ -13,12 +13,35 @@ import (
 type OrganizationModelList struct {
 	OrganizationUUID string `json:"organization_uuid"`
 	CompatModelList  string `json:"compat_model_list"`
+	// DynamicRoutes reports whether the organization's dynamic routes are
+	// listed alongside the models chosen by CompatModelList.
+	DynamicRoutes bool `json:"compat_model_list_dynamic_routes"`
+}
+
+// OrganizationModelListChange is one PUT body. A nil field is left out of the
+// body, and the API keeps its current value.
+type OrganizationModelListChange struct {
+	CompatModelList *string `json:"compat_model_list,omitempty"`
+	DynamicRoutes   *bool   `json:"compat_model_list_dynamic_routes,omitempty"`
 }
 
 var modelListOrganizationUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// CompatModelListValues are the accepted compat_model_list values. "none"
+// lists only the organization's dynamic routes.
+var CompatModelListValues = []string{"all", "simplified", "recommended", "none"}
+
+// ErrNothingListed is the combination the API refuses: none lists only dynamic
+// routes, so turning the routes off would list nothing.
+var ErrNothingListed = errors.New("compat_model_list none lists only dynamic routes, so compat_model_list_dynamic_routes must be true")
+
 func validCompatModelList(value string) bool {
-	return value == "all" || value == "simplified" || value == "recommended"
+	for _, v := range CompatModelListValues {
+		if value == v {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Client) GetOrganizationModelList(ctx context.Context) (OrganizationModelList, error) {
@@ -27,11 +50,17 @@ func (c *Client) GetOrganizationModelList(ctx context.Context) (OrganizationMode
 
 // SetOrganizationModelList issues one desired-value PUT and never retries it.
 // Callers must verify the credential organization before invoking this method.
-func (c *Client) SetOrganizationModelList(ctx context.Context, value string) (OrganizationModelList, error) {
-	if !validCompatModelList(value) {
-		return OrganizationModelList{}, errors.New("compat_model_list must be all, simplified, or recommended")
+func (c *Client) SetOrganizationModelList(ctx context.Context, change OrganizationModelListChange) (OrganizationModelList, error) {
+	if change.CompatModelList == nil && change.DynamicRoutes == nil {
+		return OrganizationModelList{}, errors.New("set compat_model_list, compat_model_list_dynamic_routes or both")
 	}
-	return c.organizationModelList(ctx, http.MethodPut, map[string]string{"compat_model_list": value})
+	if change.CompatModelList != nil && !validCompatModelList(*change.CompatModelList) {
+		return OrganizationModelList{}, errors.New("compat_model_list must be all, simplified, recommended, or none")
+	}
+	if change.CompatModelList != nil && *change.CompatModelList == "none" && change.DynamicRoutes != nil && !*change.DynamicRoutes {
+		return OrganizationModelList{}, ErrNothingListed
+	}
+	return c.organizationModelList(ctx, http.MethodPut, change)
 }
 
 func (c *Client) organizationModelList(ctx context.Context, method string, body any) (OrganizationModelList, error) {
@@ -40,10 +69,18 @@ func (c *Client) organizationModelList(ctx context.Context, method string, body 
 		return OrganizationModelList{}, err
 	}
 	var envelope struct {
-		Data *OrganizationModelList `json:"data"`
+		Data *struct {
+			OrganizationUUID string `json:"organization_uuid"`
+			CompatModelList  string `json:"compat_model_list"`
+			DynamicRoutes    *bool  `json:"compat_model_list_dynamic_routes"`
+		} `json:"data"`
 	}
-	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Data == nil || !modelListOrganizationUUID.MatchString(envelope.Data.OrganizationUUID) || !validCompatModelList(envelope.Data.CompatModelList) {
+	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Data == nil || !modelListOrganizationUUID.MatchString(envelope.Data.OrganizationUUID) || !validCompatModelList(envelope.Data.CompatModelList) || envelope.Data.DynamicRoutes == nil {
 		return OrganizationModelList{}, errors.New("Opper Management API returned an invalid organization model-list response")
 	}
-	return *envelope.Data, nil
+	return OrganizationModelList{
+		OrganizationUUID: envelope.Data.OrganizationUUID,
+		CompatModelList:  envelope.Data.CompatModelList,
+		DynamicRoutes:    *envelope.Data.DynamicRoutes,
+	}, nil
 }

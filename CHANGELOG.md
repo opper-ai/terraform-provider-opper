@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix `opper_organization_model_list` failing every read, refresh, plan and import with "returned an invalid organization model-list response" for an organization whose compat model list is set to `none` on the platform. `compat_model_list` now accepts `none` (list only the organization's dynamic routes) in the resource and data source.
+- Add `compat_model_list_dynamic_routes` to the `opper_organization_model_list` resource (optional, computed) and data source (read-only): whether the organization's dynamic routes are listed. When the resource omits it, the provider never sends it and the current value is kept and reported. `compat_model_list = "none"` with `compat_model_list_dynamic_routes = false` is refused at plan time, since it would list nothing.
+- The organization model-list resource and data source now require the Management API to return `compat_model_list_dynamic_routes`, which the hosted Opper API does since it added `none`. A response without it is an error.
+
 ## v0.2.1
 
 See the [v0.2.1 release notes](docs/releases/v0.2.1.md) for upgrade guidance and verification limits.

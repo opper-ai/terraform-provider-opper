@@ -21,9 +21,11 @@ provider "opper" {
 data "opper_organization_model_list" "current" {}
 `, api.server.URL)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 0, "simplified"), Steps: []resource.TestStep{
-		{Config: config, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "id", organizationModelListTestUUID), resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list", "recommended"))},
+		{Config: config, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "id", organizationModelListTestUUID), resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list", "recommended"), resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_dynamic_routes", "true"))},
 		{Config: config, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
 		{PreConfig: func() { api.mu.Lock(); api.value = "simplified"; api.mu.Unlock() }, Config: config, Check: resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list", "simplified")},
+		{PreConfig: func() { api.mu.Lock(); api.value, api.routes = "none", true; api.mu.Unlock() }, Config: config, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list", "none"), resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_dynamic_routes", "true"))},
+		{PreConfig: func() { api.mu.Lock(); api.value, api.routes = "simplified", false; api.mu.Unlock() }, Config: config, Check: resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_dynamic_routes", "false")},
 	}})
 }
 func TestOrganizationModelListDataSourceFailure(t *testing.T) {
