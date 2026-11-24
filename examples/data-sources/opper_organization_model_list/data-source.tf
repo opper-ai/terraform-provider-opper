@@ -7,3 +7,7 @@ output "organization_uuid" {
 output "dynamic_routes_listed" {
   value = data.opper_organization_model_list.current.compat_model_list_dynamic_routes
 }
+
+output "calls_limited_to_list" {
+  value = data.opper_organization_model_list.current.compat_model_list_enforced
+}

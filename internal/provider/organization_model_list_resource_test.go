@@ -421,3 +421,92 @@ func TestOrganizationModelListNoneWhileRoutesOffExplains(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func organizationModelListEnforcedTestConfig(baseURL, value, enforced string) string {
+	enforcedLine := ""
+	if enforced != "" {
+		enforcedLine = "\n compat_model_list_enforced = " + enforced
+	}
+	return fmt.Sprintf(`
+provider "opper" {
+ management_api_key = "op-mak-local-test"
+ base_url = %q
+}
+resource "opper_organization_model_list" "test" {
+ organization_uuid = %q
+ compat_model_list = %q%s
+}
+data "opper_organization_model_list" "current" {
+ depends_on = [opper_organization_model_list.test]
+}
+`, baseURL, organizationModelListTestUUID, value, enforcedLine)
+}
+
+func checkOrganizationModelListEnforced(api *organizationModelListTestAPI, want bool) resource.TestCheckFunc {
+	return func(*terraform.State) error {
+		api.mu.Lock()
+		defer api.mu.Unlock()
+		if api.enforced != want {
+			return fmt.Errorf("expected enforced %v, got %v", want, api.enforced)
+		}
+		return nil
+	}
+}
+
+func TestOrganizationModelListEnforcedLifecycle(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	const address = "opper_organization_model_list.test"
+	const data = "data.opper_organization_model_list.current"
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 4, "simplified"), Steps: []resource.TestStep{
+		// Omitted: reports the current value and never sends it.
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", ""), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_enforced", "false"),
+			resource.TestCheckResourceAttr(data, "compat_model_list_enforced", "false"),
+			checkOrganizationModelListWrites(api, 1, "all"),
+			checkOrganizationModelListLastPut(api, "compat_model_list"),
+		)},
+		// Turning it on is an in-place update that sends it.
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", "true"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(address, plancheck.ResourceActionUpdate)}}, Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_enforced", "true"),
+			resource.TestCheckResourceAttr(data, "compat_model_list_enforced", "true"),
+			checkOrganizationModelListEnforced(api, true),
+			checkOrganizationModelListWrites(api, 2, "all"),
+			checkOrganizationModelListLastPut(api, "compat_model_list", "compat_model_list_enforced"),
+		)},
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", "true"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: checkOrganizationModelListWrites(api, 2, "all")},
+		{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		// Drift on a configured value is corrected.
+		{PreConfig: func() { api.mu.Lock(); api.enforced = false; api.mu.Unlock() }, Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", "true"), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(address, plancheck.ResourceActionUpdate)}}, Check: resource.ComposeTestCheckFunc(checkOrganizationModelListEnforced(api, true), checkOrganizationModelListWrites(api, 3, "all"))},
+		// Removing the attribute stops managing it: no plan and no PUT, and a
+		// later list change leaves it out of the body.
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", ""), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}, Check: resource.ComposeTestCheckFunc(checkOrganizationModelListEnforced(api, true), checkOrganizationModelListWrites(api, 3, "all"))},
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "simplified", ""), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_enforced", "true"),
+			checkOrganizationModelListEnforced(api, true),
+			checkOrganizationModelListWrites(api, 4, "simplified"),
+			checkOrganizationModelListLastPut(api, "compat_model_list"),
+		)},
+	}})
+}
+
+// A server from before compat_model_list_enforced leaves it out of its
+// responses. Reads report false; only setting it fails.
+func TestOrganizationModelListEnforcedOlderServer(t *testing.T) {
+	requireTerraform(t)
+	api := newOrganizationModelListTestAPI(t)
+	api.legacy = true
+	const address = "opper_organization_model_list.test"
+	// The refused PUT is counted too, so destroy sees two PUTs.
+	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: projectProviderFactories(), PreventPostDestroyRefresh: true, CheckDestroy: checkOrganizationModelListWrites(api, 2, "all"), Steps: []resource.TestStep{
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", ""), Check: resource.ComposeTestCheckFunc(
+			resource.TestCheckResourceAttr(address, "compat_model_list_enforced", "false"),
+			resource.TestCheckResourceAttr("data.opper_organization_model_list.current", "compat_model_list_enforced", "false"),
+			checkOrganizationModelListWrites(api, 1, "all"),
+		)},
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", ""), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+		{ResourceName: address, ImportState: true, ImportStateVerify: true},
+		{Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", "true"), ExpectError: regexp.MustCompile(`400`)},
+		{PreConfig: func() { api.mu.Lock(); api.unexpected = nil; api.mu.Unlock() }, Config: organizationModelListEnforcedTestConfig(api.server.URL, "all", ""), ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+	}})
+}

@@ -1,6 +1,6 @@
 # Releasing the provider
 
-The examples below use **v0.2.1**. Preparing or merging release changes does not
+The examples below use **v0.3.0**. Preparing or merging release changes does not
 publish a version or change project policies. Tagging creates a draft for review;
 publishing that draft remains a separate operator action.
 
@@ -76,7 +76,7 @@ discards the reviewed file passed with `--release-notes`.
 It then builds eight unsigned snapshot ZIPs
 in `dist/`, verifies their contents, checksums and protocol 6 manifest, and installs
 the host package with `terraform init` through an isolated filesystem mirror.
-It loads the actual provider schema and checks all 11 resources and 9 data sources.
+It loads the actual provider schema and checks all 12 resources and 10 data sources.
 It does not use development overrides, connect to Opper, or upload to GitHub or
 the Registry. This checks packaging and installation, not Registry signing or
 resource lifecycles.
@@ -95,8 +95,8 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
 2. After release approval, tag the reviewed commit on main and push that tag:
 
    ```sh
-   git tag v0.2.1 <reviewed-main-commit>
-   git push origin v0.2.1
+   git tag v0.3.0 <reviewed-main-commit>
+   git push origin v0.3.0
    ```
 
 3. The tag workflow tests the revision, checks it belongs to main, builds the
@@ -127,7 +127,7 @@ for macOS and Windows on AMD64/ARM64, and Linux on AMD64/ARM64/ARMv6/s390x.
      required_providers {
        opper = {
          source  = "opper-ai/opper"
-         version = "0.2.1"
+         version = "0.3.0"
        }
      }
    }

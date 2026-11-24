@@ -85,8 +85,12 @@ def main():
         print(terraform("init", "-backend=false", "-input=false", "-no-color", cwd=root, env=env))
         schema = json.loads(terraform("providers", "schema", "-json", cwd=root, env=env))
         provider = schema["provider_schemas"]["registry.terraform.io/opper-ai/opper"]
-        assert len(provider["resource_schemas"]) == 11
-        assert len(provider["data_source_schemas"]) == 9
+        assert len(provider["resource_schemas"]) == 12
+        assert len(provider["data_source_schemas"]) == 10
+        assert "opper_project_model_list" in provider["resource_schemas"], "package lacks project model lists"
+        assert "opper_project_model_list" in provider["data_source_schemas"], "package lacks the project model-list data source"
+        model_list = provider["resource_schemas"]["opper_organization_model_list"]["block"]["attributes"]
+        assert "compat_model_list_enforced" in model_list, "package lacks the model-list enforcement switch"
         project = provider["resource_schemas"]["opper_project"]["block"]["attributes"]
         initial = project.get("initial_access", {})
         assert initial.get("optional"), "package lacks initial project access support"

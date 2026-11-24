@@ -8,14 +8,19 @@ import (
 	"regexp"
 )
 
-// OrganizationModelList describes the credential's organization preference,
-// which changes model listing only, not model execution permissions.
+// OrganizationModelList describes the credential's organization preference.
+// It changes model listing, and with Enforced also which models the
+// organization's API keys can call.
 type OrganizationModelList struct {
 	OrganizationUUID string `json:"organization_uuid"`
 	CompatModelList  string `json:"compat_model_list"`
 	// DynamicRoutes reports whether the organization's dynamic routes are
 	// listed alongside the models chosen by CompatModelList.
 	DynamicRoutes bool `json:"compat_model_list_dynamic_routes"`
+	// Enforced reports whether the organization's API keys can only call what
+	// the list shows. A server that predates the field leaves it out; that is
+	// read as false, since such a server never limits calls to the list.
+	Enforced bool `json:"compat_model_list_enforced"`
 }
 
 // OrganizationModelListChange is one PUT body. A nil field is left out of the
@@ -23,6 +28,7 @@ type OrganizationModelList struct {
 type OrganizationModelListChange struct {
 	CompatModelList *string `json:"compat_model_list,omitempty"`
 	DynamicRoutes   *bool   `json:"compat_model_list_dynamic_routes,omitempty"`
+	Enforced        *bool   `json:"compat_model_list_enforced,omitempty"`
 }
 
 var modelListOrganizationUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -51,8 +57,8 @@ func (c *Client) GetOrganizationModelList(ctx context.Context) (OrganizationMode
 // SetOrganizationModelList issues one desired-value PUT and never retries it.
 // Callers must verify the credential organization before invoking this method.
 func (c *Client) SetOrganizationModelList(ctx context.Context, change OrganizationModelListChange) (OrganizationModelList, error) {
-	if change.CompatModelList == nil && change.DynamicRoutes == nil {
-		return OrganizationModelList{}, errors.New("set compat_model_list, compat_model_list_dynamic_routes or both")
+	if change.CompatModelList == nil && change.DynamicRoutes == nil && change.Enforced == nil {
+		return OrganizationModelList{}, errors.New("set one or more of compat_model_list, compat_model_list_dynamic_routes and compat_model_list_enforced")
 	}
 	if change.CompatModelList != nil && !validCompatModelList(*change.CompatModelList) {
 		return OrganizationModelList{}, errors.New("compat_model_list must be all, simplified, recommended, or none")
@@ -73,6 +79,7 @@ func (c *Client) organizationModelList(ctx context.Context, method string, body 
 			OrganizationUUID string `json:"organization_uuid"`
 			CompatModelList  string `json:"compat_model_list"`
 			DynamicRoutes    *bool  `json:"compat_model_list_dynamic_routes"`
+			Enforced         *bool  `json:"compat_model_list_enforced"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Data == nil || !modelListOrganizationUUID.MatchString(envelope.Data.OrganizationUUID) || !validCompatModelList(envelope.Data.CompatModelList) || envelope.Data.DynamicRoutes == nil {
@@ -82,5 +89,6 @@ func (c *Client) organizationModelList(ctx context.Context, method string, body 
 		OrganizationUUID: envelope.Data.OrganizationUUID,
 		CompatModelList:  envelope.Data.CompatModelList,
 		DynamicRoutes:    *envelope.Data.DynamicRoutes,
+		Enforced:         envelope.Data.Enforced != nil && *envelope.Data.Enforced,
 	}, nil
 }

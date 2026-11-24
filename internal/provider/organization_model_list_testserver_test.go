@@ -12,10 +12,13 @@ const organizationModelListTestUUID = "11111111-1111-4111-8111-111111111111"
 const organizationModelListOtherUUID = "22222222-2222-4222-8222-222222222222"
 
 type organizationModelListTestAPI struct {
-	mu                     sync.Mutex
-	server                 *httptest.Server
-	uuid, value            string
-	routes                 bool
+	mu               sync.Mutex
+	server           *httptest.Server
+	uuid, value      string
+	routes, enforced bool
+	// legacy mimics a server from before compat_model_list_enforced: it
+	// leaves the field out of responses and refuses it in a PUT.
+	legacy                 bool
 	putBodies              []map[string]any
 	reads, puts            int
 	getFailure, putFailure int
@@ -68,8 +71,9 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			fail(api.putFailure)
 			return
 		}
-		// Mirror the API: compat_model_list, compat_model_list_dynamic_routes or
-		// both, nothing else, and never a result that lists nothing.
+		// Mirror the API: one or more of compat_model_list,
+		// compat_model_list_dynamic_routes and compat_model_list_enforced,
+		// nothing else, and never a result that lists nothing.
 		var body map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body) == 0 {
 			api.unexpected = append(api.unexpected, "invalid PUT body")
@@ -77,7 +81,7 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			return
 		}
 		api.putBodies = append(api.putBodies, body)
-		value, routes := api.value, api.routes
+		value, routes, enforced := api.value, api.routes, api.enforced
 		for key, raw := range body {
 			switch key {
 			case "compat_model_list":
@@ -96,6 +100,14 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 					return
 				}
 				routes = v
+			case "compat_model_list_enforced":
+				v, ok := raw.(bool)
+				if !ok || api.legacy {
+					api.unexpected = append(api.unexpected, "invalid compat_model_list_enforced")
+					fail(400)
+					return
+				}
+				enforced = v
 			default:
 				api.unexpected = append(api.unexpected, "unknown PUT field "+key)
 				fail(400)
@@ -107,7 +119,7 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			fail(400)
 			return
 		}
-		api.value, api.routes = value, routes
+		api.value, api.routes, api.enforced = value, routes, enforced
 		switch api.putResponse {
 		case "malformed_saved":
 			_, _ = w.Write([]byte(`{"meta":{},"data":`))
@@ -122,5 +134,9 @@ func (api *organizationModelListTestAPI) serveHTTP(w http.ResponseWriter, r *htt
 			responseUUID = organizationModelListOtherUUID
 		}
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": map[string]any{"organization_uuid": responseUUID, "compat_model_list": api.value, "compat_model_list_dynamic_routes": api.routes}})
+	data := map[string]any{"organization_uuid": responseUUID, "compat_model_list": api.value, "compat_model_list_dynamic_routes": api.routes, "compat_model_list_enforced": api.enforced}
+	if api.legacy {
+		delete(data, "compat_model_list_enforced")
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": data})
 }

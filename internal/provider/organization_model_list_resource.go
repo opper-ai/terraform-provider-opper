@@ -32,6 +32,7 @@ type organizationModelListModel struct {
 	OrganizationUUID types.String `tfsdk:"organization_uuid"`
 	CompatModelList  types.String `tfsdk:"compat_model_list"`
 	DynamicRoutes    types.Bool   `tfsdk:"compat_model_list_dynamic_routes"`
+	Enforced         types.Bool   `tfsdk:"compat_model_list_enforced"`
 }
 
 func (m *organizationModelListModel) set(value client.OrganizationModelList) {
@@ -39,6 +40,7 @@ func (m *organizationModelListModel) set(value client.OrganizationModelList) {
 	m.OrganizationUUID = types.StringValue(value.OrganizationUUID)
 	m.CompatModelList = types.StringValue(value.CompatModelList)
 	m.DynamicRoutes = types.BoolValue(value.DynamicRoutes)
+	m.Enforced = types.BoolValue(value.Enforced)
 }
 func NewOrganizationModelListResource() resource.Resource { return &OrganizationModelListResource{} }
 func (r *OrganizationModelListResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -46,12 +48,13 @@ func (r *OrganizationModelListResource) Metadata(_ context.Context, req resource
 }
 func (r *OrganizationModelListResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage the organization's compatibility model-list preference. Requires controls:read and controls:write. This changes advertised models, not execution permissions. Creation adopts the existing singleton setting. Destroy relinquishes management and leaves the current preference unchanged. Coordinate other writers; this API has no compare-and-swap guarantee.",
+		MarkdownDescription: "Manage the organization's compatibility model-list preference. Requires controls:read and controls:write. This changes advertised models, and with compat_model_list_enforced also which models the organization's API keys can call. Creation adopts the existing singleton setting. Destroy relinquishes management and leaves the current preference unchanged. Coordinate other writers; this API has no compare-and-swap guarantee.",
 		Attributes: map[string]schema.Attribute{
 			"id":                               schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}, MarkdownDescription: "Organization UUID, also used for import."},
 			"organization_uuid":                schema.StringAttribute{Required: true, Validators: projectIDValidators(), PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}, MarkdownDescription: "Canonical lowercase organization UUID. Must match the management credential's organization before any write. Changing it replaces the Terraform resource, not the organization."},
 			"compat_model_list":                schema.StringAttribute{Required: true, Validators: []validator.String{stringvalidator.OneOf(client.CompatModelListValues...)}, MarkdownDescription: "Models advertised by compat listing endpoints: all, simplified, recommended, or none. With none, only the organization's dynamic routes are listed."},
 			"compat_model_list_dynamic_routes": schema.BoolAttribute{Optional: true, Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}, MarkdownDescription: "Whether the organization's dynamic routes are listed alongside the models chosen by compat_model_list. Opper defaults it to true. When omitted, the provider leaves the current value unchanged and reports it. Must be true when compat_model_list is none."},
+			"compat_model_list_enforced":       schema.BoolAttribute{Optional: true, Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}, MarkdownDescription: "Whether the list also limits calls: the organization's API keys, and those of every project that follows the organization, can only call what the list shows (after the rules), and any other LLM or embedding model is refused with HTTP 403 and reason model_list_blocked. Guard checks, observe judges, the models a dynamic route calls, and image, video, audio and custom models are not limited. While it is true every project is limited, including projects with their own list. Opper defaults it to false. When omitted, the provider leaves the current value unchanged and reports it."},
 		},
 	}
 }
@@ -81,30 +84,37 @@ func (r *OrganizationModelListResource) ValidateConfig(ctx context.Context, req 
 }
 
 // organizationModelListDesired is the configured target. A nil DynamicRoutes
-// means the configuration leaves that field unmanaged: it is not sent and any
-// current value is accepted.
+// or Enforced means the configuration leaves that field unmanaged: it is not
+// sent and any current value is accepted.
 type organizationModelListDesired struct {
 	CompatModelList string
 	DynamicRoutes   *bool
+	Enforced        *bool
 }
 
 func (d organizationModelListDesired) matches(v client.OrganizationModelList) bool {
-	return v.CompatModelList == d.CompatModelList && (d.DynamicRoutes == nil || v.DynamicRoutes == *d.DynamicRoutes)
+	return v.CompatModelList == d.CompatModelList && (d.DynamicRoutes == nil || v.DynamicRoutes == *d.DynamicRoutes) && (d.Enforced == nil || v.Enforced == *d.Enforced)
+}
+
+// configuredBool is nil for a null or unknown value, which leaves the field
+// out of the PUT body.
+func configuredBool(value types.Bool) *bool {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	v := value.ValueBool()
+	return &v
 }
 
 // configuredOrganizationModelList reads the desired values from configuration,
-// not the plan, so an omitted dynamic-routes value is never sent.
+// not the plan, so an omitted dynamic-routes or enforced value is never sent.
 func configuredOrganizationModelList(ctx context.Context, config tfsdk.Config) (organizationModelListDesired, diag.Diagnostics) {
 	var list types.String
-	var routes types.Bool
+	var routes, enforced types.Bool
 	diags := config.GetAttribute(ctx, path.Root("compat_model_list"), &list)
 	diags.Append(config.GetAttribute(ctx, path.Root("compat_model_list_dynamic_routes"), &routes)...)
-	desired := organizationModelListDesired{CompatModelList: list.ValueString()}
-	if !routes.IsNull() && !routes.IsUnknown() {
-		value := routes.ValueBool()
-		desired.DynamicRoutes = &value
-	}
-	return desired, diags
+	diags.Append(config.GetAttribute(ctx, path.Root("compat_model_list_enforced"), &enforced)...)
+	return organizationModelListDesired{CompatModelList: list.ValueString(), DynamicRoutes: configuredBool(routes), Enforced: configuredBool(enforced)}, diags
 }
 
 func organizationModelListIdentity(value client.OrganizationModelList, expected string) error {
@@ -134,7 +144,7 @@ func (r *OrganizationModelListResource) setOrganizationModelList(ctx context.Con
 		return client.OrganizationModelList{}, errors.New("compat_model_list none lists only dynamic routes, and they are currently off for this organization; set compat_model_list_dynamic_routes = true")
 	}
 	value := desired.CompatModelList
-	updated, err := r.client.SetOrganizationModelList(ctx, client.OrganizationModelListChange{CompatModelList: &value, DynamicRoutes: desired.DynamicRoutes})
+	updated, err := r.client.SetOrganizationModelList(ctx, client.OrganizationModelListChange{CompatModelList: &value, DynamicRoutes: desired.DynamicRoutes, Enforced: desired.Enforced})
 	if err != nil {
 		// A definitive client error is a refusal, not an uncertain success.
 		var apiError *client.APIError
@@ -207,7 +217,7 @@ func (r *OrganizationModelListResource) Update(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if data.CompatModelList.Equal(previous.CompatModelList) && !data.DynamicRoutes.IsUnknown() && data.DynamicRoutes.Equal(previous.DynamicRoutes) {
+	if data.CompatModelList.Equal(previous.CompatModelList) && !data.DynamicRoutes.IsUnknown() && data.DynamicRoutes.Equal(previous.DynamicRoutes) && !data.Enforced.IsUnknown() && data.Enforced.Equal(previous.Enforced) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		return
 	}
