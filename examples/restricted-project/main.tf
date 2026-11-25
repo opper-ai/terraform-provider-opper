@@ -4,7 +4,7 @@ terraform {
   required_providers {
     opper = {
       source  = "opper-ai/opper"
-      version = "~> 0.2.0"
+      version = "~> 0.3.0"
     }
   }
 }

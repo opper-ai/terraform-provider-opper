@@ -25,8 +25,9 @@ func (d *OrganizationModelListDataSource) Schema(_ context.Context, _ datasource
 	resp.Schema = schema.Schema{MarkdownDescription: "Read the management credential organization's compatibility model-list preference. Requires controls:read; performs no mutation.", Attributes: map[string]schema.Attribute{
 		"id":                               schema.StringAttribute{Computed: true, MarkdownDescription: "Organization UUID."},
 		"organization_uuid":                schema.StringAttribute{Computed: true, MarkdownDescription: "Organization UUID resolved from the management credential."},
-		"compat_model_list":                schema.StringAttribute{Computed: true, MarkdownDescription: "Current preference: all, simplified, recommended, or none (only the organization's dynamic routes are listed). This affects advertised models, not execution permissions."},
+		"compat_model_list":                schema.StringAttribute{Computed: true, MarkdownDescription: "Current preference: all, simplified, recommended, or none (only the organization's dynamic routes are listed). It affects advertised models, and calls only when compat_model_list_enforced is true."},
 		"compat_model_list_dynamic_routes": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the organization's dynamic routes are listed alongside the models chosen by compat_model_list."},
+		"compat_model_list_enforced":       schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether the organization's API keys, and those of every project that follows it, can only call what the list shows. False on a server that predates the field."},
 	}}
 }
 func (d *OrganizationModelListDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

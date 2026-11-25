@@ -9,9 +9,11 @@ The Opper provider manages organization configuration through the [Management AP
 
 Use Terraform 1.11 or later for the full provider surface, including write-only custom-model credentials. Use the configuration below and run `terraform init` to install the selected Registry version. For local builds, follow the [development override instructions](https://github.com/opper-ai/terraform-provider-opper/blob/main/README.md#develop-locally).
 
-v0.2.1 fixes rule import JSON formatting while preserving existing desired state
-when the remote policy is unchanged.
-See the [patch release notes](https://github.com/opper-ai/terraform-provider-opper/blob/v0.2.1/docs/releases/v0.2.1.md)
+v0.3.0 adds per-project model lists (`opper_project_model_list`) and the
+`compat_model_list_enforced` switch, which lets a model list also limit which
+models API keys can call. It also accepts the `none` list and manages the
+dynamic-routes switch on `opper_organization_model_list`.
+See the [release notes](https://github.com/opper-ai/terraform-provider-opper/blob/v0.3.0/docs/releases/v0.3.0.md)
 for upgrade behavior and verification limits.
 
 ```hcl
@@ -21,7 +23,7 @@ terraform {
   required_providers {
     opper = {
       source  = "opper-ai/opper"
-      version = "~> 0.2.0"
+      version = "~> 0.3.0"
     }
   }
 }
@@ -44,6 +46,7 @@ Supply a management API key using `OPPER_MANAGEMENT_API_KEY`. The key determines
 | Existing-project access policy | `project_access:read`, `project_access:write` |
 | Member lookup and member list data sources | `members:read` |
 | Organization model-list resource / data source | `controls:read`, `controls:write` / `controls:read` |
+| Project model-list resource / data source | `controls:read`, `controls:write` / `controls:read` |
 | Runtime key resource | `apikeys:read`, `apikeys:write` |
 | Project webhook resource | `apikeys:read`, `apikeys:write` |
 | Rule resource | `controls:read`, `controls:write` |

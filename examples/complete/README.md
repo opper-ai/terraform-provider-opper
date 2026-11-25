@@ -8,7 +8,7 @@ The route uses a single model node. Choose an exact current model ID from the [O
 
 ## Use
 
-Use the example's v0.2.x Registry constraint, or follow the repository's [local development setup](../../README.md#develop-locally) for a local build. Supply `OPPER_MANAGEMENT_API_KEY` privately. The management key needs `projects:read`, `projects:write`, `projects:delete`, `apikeys:read`, `apikeys:write`, `controls:read`, `controls:write`, `dynamic_routes:read` and `dynamic_routes:write` for the complete lifecycle.
+Use the example's v0.3.x Registry constraint, or follow the repository's [local development setup](../../README.md#develop-locally) for a local build. Supply `OPPER_MANAGEMENT_API_KEY` privately. The management key needs `projects:read`, `projects:write`, `projects:delete`, `apikeys:read`, `apikeys:write`, `controls:read`, `controls:write`, `dynamic_routes:read` and `dynamic_routes:write` for the complete lifecycle.
 
 From this directory, with `TF_VAR_model_id` set to your chosen model ID:
 

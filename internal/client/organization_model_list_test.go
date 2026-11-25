@@ -17,7 +17,7 @@ func modelListBool(v bool) *bool       { return &v }
 
 func TestOrganizationModelListClient(t *testing.T) {
 	calls := 0
-	current, routes := "all", true
+	current, routes, enforced := "all", true, false
 	var bodies []map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -42,6 +42,8 @@ func TestOrganizationModelListClient(t *testing.T) {
 					current = value.(string)
 				case "compat_model_list_dynamic_routes":
 					routes = value.(bool)
+				case "compat_model_list_enforced":
+					enforced = value.(bool)
 				default:
 					t.Errorf("unexpected PUT field %q", key)
 				}
@@ -51,7 +53,7 @@ func TestOrganizationModelListClient(t *testing.T) {
 			w.WriteHeader(405)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": map[string]any{"organization_uuid": modelListTestOrgUUID, "compat_model_list": current, "compat_model_list_dynamic_routes": routes}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"meta": map[string]any{}, "data": map[string]any{"organization_uuid": modelListTestOrgUUID, "compat_model_list": current, "compat_model_list_dynamic_routes": routes, "compat_model_list_enforced": enforced}})
 	}))
 	defer server.Close()
 	c, err := New(server.URL, "test-key", "test")
@@ -88,11 +90,21 @@ func TestOrganizationModelListClient(t *testing.T) {
 	if got.CompatModelList != "none" || !got.DynamicRoutes {
 		t.Fatalf("unexpected combined PUT result: %+v", got)
 	}
-	if calls != 7 {
-		t.Fatalf("expected seven single requests, got %d", calls)
+	if got.Enforced {
+		t.Fatalf("enforced without a write: %+v", got)
+	}
+	got, err = c.SetOrganizationModelList(context.Background(), OrganizationModelListChange{Enforced: modelListBool(true)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CompatModelList != "none" || !got.DynamicRoutes || !got.Enforced {
+		t.Fatalf("enforced-only PUT changed the wrong field: %+v", got)
+	}
+	if calls != 8 {
+		t.Fatalf("expected eight single requests, got %d", calls)
 	}
 	// A field the caller leaves out is left out of the body, so the API keeps it.
-	wantFields := [][]string{{"compat_model_list"}, {"compat_model_list"}, {"compat_model_list"}, {"compat_model_list"}, {"compat_model_list_dynamic_routes"}, {"compat_model_list", "compat_model_list_dynamic_routes"}}
+	wantFields := [][]string{{"compat_model_list"}, {"compat_model_list"}, {"compat_model_list"}, {"compat_model_list"}, {"compat_model_list_dynamic_routes"}, {"compat_model_list", "compat_model_list_dynamic_routes"}, {"compat_model_list_enforced"}}
 	for i, want := range wantFields {
 		if len(bodies[i]) != len(want) {
 			t.Fatalf("PUT %d body %v, want fields %v", i, bodies[i], want)
@@ -120,6 +132,28 @@ func TestOrganizationModelListClientAcceptsNone(t *testing.T) {
 	}
 }
 
+// A server from before compat_model_list_enforced leaves it out; that reads as
+// false. A null reads the same way.
+func TestOrganizationModelListClientEnforcedOptionalInResponse(t *testing.T) {
+	for body, want := range map[string]bool{
+		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":true}}`:                                    false,
+		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":true,"compat_model_list_enforced":null}}`:  false,
+		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":true,"compat_model_list_enforced":false}}`: false,
+		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":true,"compat_model_list_enforced":true}}`:  true,
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(body)) }))
+		c, err := New(server.URL, "test-key", "test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := c.GetOrganizationModelList(context.Background())
+		server.Close()
+		if err != nil || got.Enforced != want {
+			t.Fatalf("%s: got %+v %v, want enforced %v", body, got, err, want)
+		}
+	}
+}
+
 func TestOrganizationModelListClientRejectsInvalidResponse(t *testing.T) {
 	for _, body := range []string{
 		`{}`, `{"data":null}`, `{"data":{"compat_model_list":"all","compat_model_list_dynamic_routes":true}}`,
@@ -131,6 +165,7 @@ func TestOrganizationModelListClientRejectsInvalidResponse(t *testing.T) {
 		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all"}}`,
 		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":null}}`,
 		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":"true"}}`,
+		`{"data":{"organization_uuid":"11111111-1111-4111-8111-111111111111","compat_model_list":"all","compat_model_list_dynamic_routes":true,"compat_model_list_enforced":"true"}}`,
 		`{"data":`,
 	} {
 		t.Run(body, func(t *testing.T) {

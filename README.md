@@ -13,7 +13,8 @@ The [coverage plan](docs/coverage.md) distinguishes supported configuration from
 | [`opper_project`](docs/resources/project.md) | Projects, optional atomic initial access, UUID import, name and description updates |
 | [`opper_project_access`](docs/resources/project_access.md) | Conditional policies on existing projects, UUID import and retain-on-destroy |
 | [`opper_project_webhook`](docs/resources/project_webhook.md) | Default webhook URL, project UUID import and URL clearing on destroy |
-| [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Advertised compat model-list preference; destroy retains the preference |
+| [`opper_organization_model_list`](docs/resources/organization_model_list.md) | Compat model-list preference, its dynamic-routes switch and the switch that limits calls to the list; destroy retains the preference |
+| [`opper_project_model_list`](docs/resources/project_model_list.md) | A project's own compat model list, which replaces the organization's for its keys; project UUID import; destroy makes the project follow the organization again |
 | [`opper_api_key`](docs/resources/api_key.md) | Project-owned runtime keys, IP allowlists, replacement and rotation |
 | [`opper_rule`](docs/resources/rule.md) | Compliance, guard, observe and routing rules through typed scopes and JSON configuration |
 | [`opper_dynamic_route`](docs/resources/dynamic_route.md) | Route metadata and drafts; active deployment is observed only |
@@ -31,17 +32,19 @@ Use [`opper_project.initial_access`](docs/resources/project.md#initial-access-is
 
 The [`opper_member` data source](docs/data-sources/member.md) finds one existing member by UUID or email, so configurations can reference their UUID in rules. [`opper_members`](docs/data-sources/members.md) lists the organization's members in stable UUID order. Both require only `members:read` and perform no membership changes.
 
-The [`opper_organization_model_list` data source](docs/data-sources/organization_model_list.md) reads the credential's organization UUID and current advertised-model preference without changing it.
+The [`opper_organization_model_list` data source](docs/data-sources/organization_model_list.md) reads the credential's organization UUID and current model-list preference without changing it. The [`opper_project_model_list` data source](docs/data-sources/project_model_list.md) reads whether a project has its own list, and what it is.
 
 ## Install and configure
 
-The [v0.2.1 release notes](docs/releases/v0.2.1.md) cover normalized rule imports
-and patch upgrade considerations. The [v0.2.0 notes](docs/releases/v0.2.0.md)
-cover atomic project creation and runtime-key allowlists.
+The [v0.3.0 release notes](docs/releases/v0.3.0.md) cover per-project model lists,
+limiting calls to a model list and upgrade considerations. The
+[v0.2.1 notes](docs/releases/v0.2.1.md) cover normalized rule imports, and the
+[v0.2.0 notes](docs/releases/v0.2.0.md) cover atomic project creation and
+runtime-key allowlists.
 
 Use Terraform **1.11 or later** to use the full provider surface, including write-only BYOK credentials. Recent live acceptance used Terraform 1.15.3.
 
-The configuration below selects the v0.2.x provider series. Run `terraform init` to install the selected Registry version. To use a local build instead, follow the [development override instructions](#develop-locally).
+The configuration below selects the v0.3.x provider series. Run `terraform init` to install the selected Registry version. To use a local build instead, follow the [development override instructions](#develop-locally).
 
 Create a management API key in the Opper platform and provide it through `OPPER_MANAGEMENT_API_KEY`. A runtime key cannot authenticate to the Management API. Managing projects requires `projects:read`, `projects:write` and `projects:delete`; a lookup needs only `projects:read`.
 
@@ -52,7 +55,7 @@ terraform {
   required_providers {
     opper = {
       source  = "opper-ai/opper"
-      version = "~> 0.2.0"
+      version = "~> 0.3.0"
     }
   }
 }
