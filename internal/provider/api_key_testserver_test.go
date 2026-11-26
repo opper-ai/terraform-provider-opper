@@ -61,7 +61,7 @@ func (a *apiKeyTestAPI) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, `{"openapi":"3.0.0","paths":{},"components":{"schemas":{}}}`)
 			return
 		}
-		fmt.Fprint(w, `{"openapi":"3.0.0","paths":{"/management/v1/projects/{uuid}/api-keys":{"post":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateManagementAPIKeyRequest"}}}}}},"/management/v1/projects/{uuid}/api-keys/{id}":{"patch":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateManagementAPIKeyRequest"}}}}}}},"components":{"schemas":{"CreateManagementAPIKeyRequest":{"type":"object","properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}},"UpdateManagementAPIKeyRequest":{"type":"object","required":["allowed_ips"],"properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}}}}}`)
+		fmt.Fprint(w, `{"openapi":"3.0.0","paths":{"/management/v1/projects/{uuid}/api-keys":{"post":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreateManagementAPIKeyRequest"}}}}}},"/management/v1/projects/{uuid}/api-keys/{id}":{"patch":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateManagementAPIKeyRequest"}}}}}}},"components":{"schemas":{"CreateManagementAPIKeyRequest":{"type":"object","properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}},"UpdateManagementAPIKeyRequest":{"type":"object","properties":{"allowed_ips":{"type":"array","items":{"type":"string"}}}}}}}`)
 		return
 	}
 	if !a.projectExists {

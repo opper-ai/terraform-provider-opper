@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix `opper_api_key` creation with a nonempty `allowed_ips` list when the Management API advertises the field as optional on updates.
+
 ## v0.3.0
 
 See the [v0.3.0 release notes](docs/releases/v0.3.0.md) for upgrade guidance and verification limits.
