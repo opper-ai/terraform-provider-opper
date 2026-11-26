@@ -41,13 +41,13 @@ func (c *Client) requireAPIKeyAllowedIPs(ctx context.Context) error {
 		return errAPIKeyAllowedIPsUnsupported
 	}
 	version, ok := document["openapi"].(string)
-	if !ok || !strings.HasPrefix(version, "3.") || !allowedIPsOperation(document, "/management/v1/projects/{uuid}/api-keys", "post", false) || !allowedIPsOperation(document, "/management/v1/projects/{uuid}/api-keys/{id}", "patch", true) {
+	if !ok || !strings.HasPrefix(version, "3.") || !allowedIPsOperation(document, "/management/v1/projects/{uuid}/api-keys", "post") || !allowedIPsOperation(document, "/management/v1/projects/{uuid}/api-keys/{id}", "patch") {
 		return errAPIKeyAllowedIPsUnsupported
 	}
 	return nil
 }
 
-func allowedIPsOperation(document map[string]any, path, method string, required bool) bool {
+func allowedIPsOperation(document map[string]any, path, method string) bool {
 	paths, _ := document["paths"].(map[string]any)
 	item, _ := paths[path].(map[string]any)
 	operation, _ := item[method].(map[string]any)
@@ -67,19 +67,7 @@ func allowedIPsOperation(document map[string]any, path, method string, required 
 		return false
 	}
 	entry, ok := resolveAllowedIPsSchema(document, list["items"])
-	if !ok || entry["type"] != "string" {
-		return false
-	}
-	if required {
-		fields, _ := schema["required"].([]any)
-		for _, field := range fields {
-			if field == "allowed_ips" {
-				return true
-			}
-		}
-		return false
-	}
-	return true
+	return ok && entry["type"] == "string"
 }
 
 func resolveAllowedIPsSchema(document map[string]any, node any) (map[string]any, bool) {

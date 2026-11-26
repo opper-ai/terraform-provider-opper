@@ -23,7 +23,7 @@ func allowedIPsOpenAPITestSpec() map[string]any {
 		"/management/v1/projects/{uuid}/api-keys/{id}": map[string]any{"patch": map[string]any{"requestBody": request("Update")}},
 	}, "components": map[string]any{"schemas": map[string]any{
 		"Create": map[string]any{"type": "object", "properties": map[string]any{"allowed_ips": array}},
-		"Update": map[string]any{"type": "object", "properties": map[string]any{"allowed_ips": array}, "required": []string{"allowed_ips"}},
+		"Update": map[string]any{"type": "object", "properties": map[string]any{"allowed_ips": array}},
 	}}}
 }
 
